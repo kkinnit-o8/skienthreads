@@ -11,7 +11,8 @@ import {
   setDoc,
   getDoc,
   arrayUnion,
-  arrayRemove
+  arrayRemove,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 import {
@@ -99,7 +100,10 @@ async function registrerBruker(email, password, displayName, school, schoolDomai
     email: userCred.user.email,
     displayName: displayName,
     school: school,
-    createdAt: new Date()
+    createdAt: new Date(),
+    state: "offline",                 // "online" | "offline"
+    lastChanged: serverTimestamp(), // keep track of last update,
+    admin: false
   });
 
   return userCred.user;
@@ -157,6 +161,15 @@ async function toggleLike(threadId, userId) {
   }
 }
 
+async function updateUserPresence(uid, state) {
+  const userRef = doc(db, "users", uid);
+
+  await updateDoc(userRef, {
+    state: state,                 // "online" | "offline"
+    lastChanged: serverTimestamp() // keep track of last update
+  });
+}
+
 
   
 
@@ -171,6 +184,7 @@ export {
   loggUt,
   overvåkBruker,
   hentSkole,
-  toggleLike
+  toggleLike,
+  updateUserPresence
 };
 

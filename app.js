@@ -93,72 +93,145 @@ function like(threadid){
 
 }
 
-function visTråderLive() {
+function visTråderLive(selectedSchool = "Alle skoler") {
   const container = document.getElementById("Threads");
 
   let currentUser = null;
-  overvåkBruker(user => currentUser = user); // store current user for rendering
+  overvåkBruker(user => currentUser = user);
 
   visDokumenterLive("Threads", (docs) => {
-    container.innerHTML = ""; // clear current posts
+    // defensiv: forventer en array
+    if (!Array.isArray(docs)) return;
 
-    docs.sort((a, b) => {
+    // tøm container sikkert
+    container.innerHTML = "";
+
+    // filter etter skole
+    let filteredDocs = docs;
+    if (selectedSchool !== "Alle skoler") {
+      filteredDocs = docs.filter(thread => thread && thread.school === selectedSchool);
+    }
+
+    // sortere (behandler mulig Firestore Timestamp)
+    filteredDocs.sort((a, b) => {
       if (sortThreadsBy === "recent") {
-        return b.createdAt.toMillis() - a.createdAt.toMillis(); // newest first
+        const aMillis = a?.createdAt?.toMillis ? a.createdAt.toMillis() : (new Date(a.createdAt)).getTime();
+        const bMillis = b?.createdAt?.toMillis ? b.createdAt.toMillis() : (new Date(b.createdAt)).getTime();
+        return bMillis - aMillis;
       } else if (sortThreadsBy === "popular") {
-        const likesA = a.likes ? a.likes.length : 0;
-        const likesB = b.likes ? b.likes.length : 0;
-        return likesB - likesA; // most liked first
+        return (b.likes?.length || 0) - (a.likes?.length || 0);
       }
+      return 0;
     });
 
-    docs.forEach((data) => {
-        const postEl = document.createElement("div");
-        postEl.classList.add("thread-card");
+    const fragment = document.createDocumentFragment();
 
-        const initials = getInitials(data.authorName);
-        const userLiked = currentUser && data.likes && data.likes.includes(currentUser.uid);
+    filteredDocs.forEach((data) => {
+      // defensiv fallback for data
+      data = data || {};
+      const postEl = document.createElement("div");
+      postEl.classList.add("thread-card");
 
-        postEl.innerHTML = `
-          <div class="thread-header">
-            <div class="user-avatar">${initials}</div>
-            <div class="thread-user-info">
-              <div class="thread-username">${data.authorName}</div>
-              <div class="thread-meta">
-                ${timeAgo(data.createdAt)}
-                <span class="thread-school-badge">${data.school}</span>
-              </div>
-            </div>
-          </div>
-          <div class="thread-content">
-            ${data.content}
-          </div>
-          <div class="thread-actions">
-            <button class="action-btn like">
-              <span>${userLiked ? "❤️" : "🤍"}</span>
-              <span>${data.likes ? data.likes.length : 0}</span>
-            </button>
-            <button class="action-btn comment">
-              <span>💬</span>
-              <span>${data.comments ? data.comments.length : 0}</span>
-            </button>
-          </div>
-        `;
+      // --- Header ---
+      const header = document.createElement("div");
+      header.classList.add("thread-header");
 
-        container.appendChild(postEl);
+      const avatar = document.createElement("div");
+      avatar.classList.add("user-avatar");
+      // getInitials antas sikker: wrap i String og fallback
+      avatar.textContent = String(getInitials(data.authorName || "Anonym"));
 
-        // Attach click listener for like
-        const likeBtn = postEl.querySelector(".action-btn.like");
-        likeBtn.addEventListener("click", () => {
-          if (!currentUser) {
-            alert("Du må være logget inn for å like!");
-            return;
-          }
-          toggleLike(data.id, currentUser.uid); // Firestore updates, live listener re-renders UI
-        });
+      const userInfo = document.createElement("div");
+      userInfo.classList.add("thread-user-info");
+
+      const username = document.createElement("div");
+      username.classList.add("thread-username");
+      username.textContent = String(data.authorName || "Anonym");
+
+      const meta = document.createElement("div");
+      meta.classList.add("thread-meta");
+      // timeAgo antas å returnere streng - gjøres defensivt
+      try {
+        meta.appendChild(document.createTextNode(String(timeAgo(data.createdAt))));
+      } catch (err) {
+        meta.appendChild(document.createTextNode(""));
+      }
+
+      const schoolBadge = document.createElement("span");
+      schoolBadge.classList.add("thread-school-badge");
+      schoolBadge.textContent = String(data.school || "");
+
+      // legg til meta/ badge (mellomrom for lesbarhet)
+      meta.appendChild(document.createTextNode(" "));
+      meta.appendChild(schoolBadge);
+
+      userInfo.appendChild(username);
+      userInfo.appendChild(meta);
+
+      header.appendChild(avatar);
+      header.appendChild(userInfo);
+
+      // --- Content (sikkert, bruker textContent) ---
+      const contentEl = document.createElement("div");
+      contentEl.classList.add("thread-content");
+      contentEl.textContent = String(data.content || "");
+
+      // --- Actions ---
+      const actions = document.createElement("div");
+      actions.classList.add("thread-actions");
+
+      // Like-knapp
+      const likeBtn = document.createElement("button");
+      likeBtn.classList.add("action-btn", "like");
+
+      const userLiked = currentUser && Array.isArray(data.likes) && data.likes.includes(currentUser.uid);
+      const likeEmoji = document.createElement("span");
+      likeEmoji.textContent = userLiked ? "❤️" : "🤍";
+
+      const likeCount = document.createElement("span");
+      likeCount.textContent = String((Array.isArray(data.likes) ? data.likes.length : 0));
+
+      likeBtn.appendChild(likeEmoji);
+      likeBtn.appendChild(likeCount);
+
+      likeBtn.addEventListener("click", () => {
+        if (!currentUser) {
+          alert("Du må være logget inn for å like!");
+          return;
+        }
+        // toggleLike bør være en allerede definert funksjon
+        toggleLike(data.id, currentUser.uid);
       });
+
+      // Comment-knapp
+      const commentBtn = document.createElement("button");
+      commentBtn.classList.add("action-btn", "comment");
+
+      const commentEmoji = document.createElement("span");
+      commentEmoji.textContent = "💬";
+
+      const commentCount = document.createElement("span");
+      commentCount.textContent = String((Array.isArray(data.comments) ? data.comments.length : 0));
+
+      commentBtn.appendChild(commentEmoji);
+      commentBtn.appendChild(commentCount);
+
+      actions.appendChild(likeBtn);
+      actions.appendChild(commentBtn);
+
+      // --- Beste måte å bygge elementet på ---
+      postEl.appendChild(header);
+      postEl.appendChild(contentEl);
+      postEl.appendChild(actions);
+
+      fragment.appendChild(postEl);
+    });
+
+    container.appendChild(fragment);
   });
 }
+
+
 
 
 
@@ -275,13 +348,17 @@ document.querySelector(".profile-btn").addEventListener("click", () => {
 });
 
 // ============================================ show name in profile ============================================ //
-overvåkBruker((user) => {
+overvåkBruker( async (user) => {
   if (user) {
     let displayName = user.displayName || "Bruker";
     //document.getElementById("profileName").textContent = displayName;
     let initals_els = document.querySelectorAll(".initials");
     initals_els.forEach(el => el.textContent = displayName.split(" ").map(n => n[0]).join("").toUpperCase());
-  }
+      await updateUserPresence(user.uid, "online");
+      window.addEventListener("beforeunload", () => {
+        updateUserPresence(user.uid, "offline");
+      });
+    }
 });
 
 
@@ -309,5 +386,10 @@ document.getElementById("nylig").addEventListener("click", () => {
   popular.classList.remove("active")
   visTråderLive()
 })
+
+document.getElementById("schoolFilter").addEventListener("change", (e) => {
+  visTråderLive(e.target.value);
+});
+
 
 visTråderLive()
