@@ -1,0 +1,673 @@
+/* ============================================ */
+/* COLOR SCHEME VARIABLES */
+/* Define all colors here for easy customization */
+/* ============================================ */
+:root {
+  /* Primary brand colors */
+  --primary-color: #2563eb;        /* Main blue */
+  --primary-hover: #1d4ed8;        /* Darker blue for hover states */
+  --primary-light: #dbeafe;        /* Light blue for backgrounds */
+  
+  /* Secondary accent colors */
+  --secondary-color: #7c3aed;      /* Purple accent */
+  --secondary-hover: #6d28d9;      /* Darker purple for hover */
+  
+  /* Neutral colors */
+  --background: #f8fafc;           /* Page background (light gray) */
+  --surface: #ffffff;              /* Card/surface backgrounds (white) */
+  --text-primary: #1e293b;         /* Main text color (dark gray) */
+  --text-secondary: #64748b;       /* Secondary text (lighter gray) */
+  --border: #e2e8f0;               /* Border color (very light gray) */
+  
+  /* Status colors */
+  --success: #10b981;              /* Green for success states */
+  --error: #ef4444;                /* Red for errors/likes */
+  --warning: #f59e0b;              /* Orange for warnings */
+  
+  /* Shadow definitions */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+/* ============================================ */
+/* RESET AND BASE STYLES */
+/* ============================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, var(--primary-light) 0%, var(--background) 100%);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* Hide elements with .hidden class */
+.hidden {
+  display: none !important;
+}
+
+/* ============================================ */
+/* AUTHENTICATION SCREENS (Login/Register) */
+/* ============================================ */
+.auth-screen {
+  background: var(--surface);
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 420px;
+  animation: fadeIn 0.5s ease-in;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -60%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* Auth screen headings */
+.auth-screen h2 {
+  color: var(--text-primary);
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 32px;
+  text-align: center;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Auth form styles */
+.auth-screen form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.auth-screen label {
+  color: var(--text-primary);
+  font-weight: 500;
+  font-size: 14px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.auth-screen input[type="email"],
+.auth-screen input[type="text"],
+.auth-screen input[type="password"] {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  color: var(--text-primary);
+  background: var(--surface);
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.auth-screen input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.auth-screen input:hover {
+  border-color: var(--primary-color);
+}
+
+/* Auth buttons */
+.auth-screen button[type="submit"] {
+  width: 100%;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 12px;
+  box-shadow: var(--shadow-md);
+}
+
+.auth-screen button[type="submit"]:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.auth-screen button[type="submit"]:active {
+  transform: translateY(0);
+}
+
+/* Toggle text between login/register */
+.auth-toggle {
+  text-align: center;
+  margin-top: 20px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.auth-toggle .link {
+  color: var(--primary-color);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.auth-toggle .link:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+}
+
+/* ============================================ */
+/* MAIN PAGE - NAVIGATION BAR */
+/* Sticky header at the top of the page */
+/* ============================================ */
+.navbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+  position: sticky;                /* Sticks to top when scrolling */
+  top: 0;
+  z-index: 100;                    /* Stays above other content */
+  box-shadow: var(--shadow-sm);
+}
+
+.nav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Logo text with gradient */
+.logo {
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================ */
+/* FEED TABS (Recent/Popular) */
+/* Toggle between different feed views */
+/* ============================================ */
+.feed-tabs {
+  display: flex;
+  gap: 8px;
+  background: var(--background);
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.tab-btn {
+  padding: 8px 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+  background: var(--surface);
+}
+
+/* Active tab styling */
+.tab-btn.active {
+  background: var(--surface);
+  color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============================================ */
+/* NAVIGATION ACTIONS */
+/* School selector and profile button */
+/* ============================================ */
+.nav-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+/* School filter dropdown */
+.school-selector {
+  padding: 8px 16px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  background: var(--surface);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.school-selector:hover {
+  border-color: var(--primary-color);
+}
+
+/* Profile button (circular with initials) */
+.profile-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+}
+
+.profile-btn:hover {
+  transform: scale(1.05);
+}
+
+/* ============================================ */
+/* MAIN CONTAINER */
+/* Two-column grid layout for feed and sidebar */
+/* ============================================ */
+.main-container {
+  max-width: 1200px;
+  margin: 24px auto;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: 1fr 300px;    /* Feed takes remaining space, sidebar is 300px */
+  gap: 24px;
+  background: var(--background);
+}
+
+/* ============================================ */
+/* FEED SECTION */
+/* Left column containing threads */
+/* ============================================ */
+.feed-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ============================================ */
+/* CREATE THREAD BOX */
+/* Input area for posting new threads */
+/* ============================================ */
+.create-thread {
+  background: var(--surface);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border);
+}
+
+.create-thread-input {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* User avatar (circular with initials) */
+.user-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  flex-shrink: 0;                      /* Prevents avatar from shrinking */
+}
+
+/* Textarea for thread content */
+.create-thread textarea {
+  flex: 1;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 15px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.create-thread textarea:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* Action buttons container */
+.create-thread-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* ============================================ */
+/* BUTTONS */
+/* Reusable button styles */
+/* ============================================ */
+.btn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+/* Primary button with gradient */
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ============================================ */
+/* THREAD CARD */
+/* Individual thread post container */
+/* ============================================ */
+.thread-card {
+  background: var(--surface);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border);
+  transition: all 0.3s ease;
+}
+
+.thread-card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Thread header with user info */
+.thread-header {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.thread-user-info {
+  flex: 1;
+}
+
+/* Username styling */
+.thread-username {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+/* Timestamp and metadata */
+.thread-meta {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* School badge showing which school user is from */
+.thread-school-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--primary-light);
+  color: var(--primary-color);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+/* Thread text content */
+.thread-content {
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+/* ============================================ */
+/* THREAD ACTIONS */
+/* Like, comment, share buttons */
+/* ============================================ */
+.thread-actions {
+  display: flex;
+  gap: 20px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* Individual action button (like, comment, share) */
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+  background: var(--background);
+  color: var(--primary-color);
+}
+
+/* Liked state (red heart) */
+.action-btn.liked {
+  color: var(--error);
+}
+
+/* ============================================ */
+/* SIDEBAR */
+/* Right column with trending and stats */
+/* ============================================ */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Sidebar card container */
+.sidebar-card {
+  background: var(--surface);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border);
+}
+
+/* Sidebar section title */
+.sidebar-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+
+/* ============================================ */
+/* TRENDING TOPICS */
+/* Popular hashtags section */
+/* ============================================ */
+.trending-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.trending-item:last-child {
+  border-bottom: none;
+}
+
+.trending-item:hover {
+  color: var(--primary-color);
+}
+
+/* Hashtag text */
+.trending-topic {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* Thread count for each topic */
+.trending-count {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* ============================================ */
+/* SCHOOL STATS */
+/* Active schools section */
+/* ============================================ */
+.school-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.school-info:last-child {
+  border-bottom: none;
+}
+
+/* School name */
+.school-name {
+  font-weight: 600;
+}
+
+/* Online user count */
+.school-count {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.post-school-selector {
+  padding: 10px 16px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  background: var(--surface);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.post-school-selector:hover {
+  border-color: var(--primary-color);
+}
+
+.post-school-selector:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* ============================================ */
+/* RESPONSIVE DESIGN */
+/* Mobile and tablet adjustments */
+/* ============================================ */
+
+/* Tablet: Stack sidebar on top */
+@media (max-width: 968px) {
+  .main-container {
+    grid-template-columns: 1fr;        /* Single column layout */
+  }
+
+  .sidebar {
+    order: -1;                         /* Move sidebar above feed */
+  }
+}
+
+/* Mobile: Adjust navigation and layout */
+@media (max-width: 640px) {
+  /* Auth screens take more space on mobile */
+  .auth-screen {
+    padding: 28px;
+    border-radius: 12px;
+    max-width: 90%;
+  }
+  
+  .auth-screen h2 {
+    font-size: 24px;
+    margin-bottom: 24px;
+  }
+  
+  .auth-screen input[type="email"],
+  .auth-screen input[type="text"],
+  .auth-screen input[type="password"] {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+  
+  .auth-screen button[type="submit"] {
+    padding: 12px 20px;
+    font-size: 15px;
+  }
+
+  /* Navigation adjustments */
+  .nav-container {
+    flex-wrap: wrap;
+  }
+
+  /* Make tabs full width on mobile */
+  .feed-tabs {
+    order: 3;
+    width: 100%;
+  }
+
+  /* Smaller school selector on mobile */
+  .school-selector {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+
+  /* Stack avatar and textarea vertically on mobile */
+  .create-thread-input {
+    flex-direction: column;
+  }
+
+  /* Allow action buttons to wrap on mobile */
+  .thread-actions {
+    flex-wrap: wrap;
+  }
+}

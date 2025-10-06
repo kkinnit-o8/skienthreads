@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skien Threads</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- ============================================ -->
+  <!-- REGISTER SCREEN -->
+  <!-- Initial registration form for new users -->
+  <!-- ============================================ -->
+  <div id="register-screen" class="auth-screen">
+    <h2>Registrer deg</h2>
+
+    <form id="register-form">
+      <label for="regEmail">Skolemail: </label>
+      <input type="email" id="regEmail" name="mail" autocomplete="email" required>
+      
+      <label for="regName">Brukernavn:</label>
+      <input type="text" id="regName" name="username" autocomplete="name" required>
+
+      <label for="regSchool">Velg skole:</label>
+      <select class="school-selector" id="regSchool" name="school" required>
+          <option>Alle skoler</option>
+          <option>Skien VGS</option>
+          <option>Skogmo VGS</option>
+          <option>Hjalmar VGS</option>
+      </select>
+      
+      <label for="regPass">Passord:</label>
+      <input type="password" id="regPass" name="password" autocomplete="new-password" required>
+      
+      <button type="submit" id="registerBtn">Registrer</button>
+    </form>
+    
+    <p class="auth-toggle">Allerede registrert? <span id="go-to-login" class="link">Logg inn her</span></p>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- LOGIN SCREEN -->
+  <!-- Login form for existing users -->
+  <!-- ============================================ -->
+  <div id="login-screen" class="auth-screen hidden">
+    <h2>Logg inn</h2>
+
+    <form id="login-form">
+      <label for="loginEmail">Skolemail: </label>
+      <input type="email" id="loginEmail" name="mail" autocomplete="email" required>
+      
+      <label for="loginPass">Passord:</label>
+      <input type="password" id="loginPass" name="password" autocomplete="current-password" required>
+      
+      <button type="submit" id="loginBtn">Logg inn</button>
+    </form>
+    
+    <p class="auth-toggle">Har du ikke en konto? <span id="go-to-register" class="link">Registrer deg her</span></p>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- MAIN PAGE - NAVIGATION BAR -->
+  <!-- Sticky header with logo, tabs, school selector, and profile -->
+  <!-- ============================================ -->
+  <nav id="main-page" class="navbar hidden">
+    <div class="nav-container">
+      <!-- Logo/Brand -->
+      <div class="logo">SkienThreads</div>
+      
+      <!-- Feed Filter Tabs (Recent/Popular) -->
+      <div class="feed-tabs">
+        <button class="tab-btn active" id="nylig">Nylig</button>
+        <button class="tab-btn" id="popular">Populært</button>
+      </div>
+
+      <!-- Right side actions -->
+      <div class="nav-actions">
+        <!-- School filter dropdown -->
+        <select class="school-selector">
+          <option>Alle skoler</option>
+          <option>Skien VGS</option>
+          <option>Skogmo VGS</option>
+          <option>Hjalmar VGS</option>
+        </select>
+        <!-- User profile button (shows initials) -->
+        <button class="profile-btn initials">xx</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ============================================ -->
+  <!-- MAIN CONTENT CONTAINER -->
+  <!-- Two-column layout: Feed + Sidebar -->
+  <!-- ============================================ -->
+  <div id="main-content" class="main-container hidden">
+    
+    <!-- ============================================ -->
+    <!-- LEFT COLUMN: FEED SECTION -->
+    <!-- Contains create thread box and thread cards -->
+    <!-- ============================================ -->
+    <div class="feed-section">
+      
+      <!-- CREATE NEW THREAD BOX -->
+       <form id="post-thread">
+          <div class="create-thread">
+            <div class="create-thread-input">
+              <!-- User avatar (shows initials) -->
+              <div class="user-avatar initials">JD</div>
+              <!-- Text input for new thread -->
+              <textarea placeholder="Hva tenker du på?" required></textarea>
+            </div>
+                <div class="create-thread-actions">
+                    <button class="btn btn-primary" id="post-thread-btn" type="submit">Publiser</button>
+                </div>
+          </div>
+        </form>
+
+      <!-- ============================================ -->
+      <!-- THREAD CARD 1 -->
+      <!-- ============================================ -->
+      
+      <div id="Threads">
+      <div class="thread-card">
+        <!-- Thread header with user info -->
+        <div class="thread-header">
+          <div class="user-avatar">MH</div>
+          <div class="thread-user-info">
+            <div class="thread-username">Martin Hansen</div>
+            <div class="thread-meta">
+              2 timer siden
+              <!-- School badge showing which school the user is from -->
+              <span class="thread-school-badge">Skien VGS</span>
+            </div>
+          </div>
+        </div>
+        <!-- Thread content/text -->
+        <div class="thread-content">
+          Noen som vet når tentamen i matte er? Finner ikke timeplanen min 😅
+        </div>
+        <!-- Action buttons (like, comment, share) -->
+        <div class="thread-actions">
+          <button class="action-btn">
+            <span>❤️</span>
+            <span>24</span>
+          </button>
+          <button class="action-btn">
+            <span>💬</span>
+            <span>8</span>
+          </button>
+          <button class="action-btn">
+            <span>🔄</span>
+            <span>3</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ============================================ -->
+      <!-- THREAD CARD 2 -->
+      <!-- ============================================ -->
+      <div class="thread-card">
+        <div class="thread-header">
+          <div class="user-avatar">SK</div>
+          <div class="thread-user-info">
+            <div class="thread-username">Sara Kristensen</div>
+            <div class="thread-meta">
+              5 timer siden
+              <span class="thread-school-badge">Porsgrunn VGS</span>
+            </div>
+          </div>
+        </div>
+        <div class="thread-content">
+          Noen som vil bli med på fotballtrening etter skolen i dag? Vi trenger flere! ⚽
+        </div>
+        <div class="thread-actions">
+          <!-- "liked" class shows this is already liked by user -->
+          <button class="action-btn liked">
+            <span>❤️</span>
+            <span>42</span>
+          </button>
+          <button class="action-btn">
+            <span>💬</span>
+            <span>15</span>
+          </button>
+          <button class="action-btn">
+            <span>🔄</span>
+            <span>7</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ============================================ -->
+      <!-- THREAD CARD 3 -->
+      <!-- ============================================ -->
+      <div class="thread-card">
+        <div class="thread-header">
+          <div class="user-avatar">EJ</div>
+          <div class="thread-user-info">
+            <div class="thread-username">Erik Johansen</div>
+            <div class="thread-meta">
+              1 dag siden
+              <span class="thread-school-badge">Bamble VGS</span>
+            </div>
+          </div>
+        </div>
+        <div class="thread-content">
+          Kantina har fått ny pizza! Beste pizzaen jeg har smakt på lenge 🍕🔥
+        </div>
+        <div class="thread-actions">
+          <button class="action-btn">
+            <span>❤️</span>
+            <span>67</span>
+          </button>
+          <button class="action-btn">
+            <span>💬</span>
+            <span>23</span>
+          </button>
+          <button class="action-btn">
+            <span>🔄</span>
+            <span>12</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- RIGHT COLUMN: SIDEBAR -->
+    <!-- Contains trending topics and school stats -->
+    <!-- ============================================ -->
+    <aside class="sidebar">
+      
+      <!-- TRENDING TOPICS CARD -->
+      <div class="sidebar-card">
+        <h3 class="sidebar-title">Populært nå</h3>
+        <!-- Trending topic items -->
+        <div class="trending-item">
+          <div class="trending-topic">#MatteEksamen</div>
+          <div class="trending-count">156 tråder</div>
+        </div>
+        <div class="trending-item">
+          <div class="trending-topic">#Høstferie</div>
+          <div class="trending-count">89 tråder</div>
+        </div>
+        <div class="trending-item">
+          <div class="trending-topic">#Russetreff</div>
+          <div class="trending-count">124 tråder</div>
+        </div>
+        <div class="trending-item">
+          <div class="trending-topic">#Skolelag</div>
+          <div class="trending-count">67 tråder</div>
+        </div>
+      </div>
+
+      <!-- ACTIVE SCHOOLS CARD -->
+      <div class="sidebar-card">
+        <h3 class="sidebar-title">Aktive skoler</h3>
+        <!-- School activity stats -->
+        <div class="school-info">
+          <span class="school-name">Skien VGS</span>
+          <span class="school-count">234 online</span>
+        </div>
+        <div class="school-info">
+          <span class="school-name">Porsgrunn VGS</span>
+          <span class="school-count">189 online</span>
+        </div>
+        <div class="school-info">
+          <span class="school-name">Bamble VGS</span>
+          <span class="school-count">156 online</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Link to JavaScript file -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
