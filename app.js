@@ -7,7 +7,10 @@ import {
   visDokumenterLive,
   hentDokumenter,
   hentSkole,
-  toggleLike
+  toggleLike,
+  updateUserPresence,
+  overvåkOnlineBrukere,
+  overvåkTrendingHashtags
 } from "./utils.js";
 
 
@@ -35,14 +38,15 @@ document.getElementById("post-thread").addEventListener("submit", async (e) => {
 
     const school = await hentSkole(user.uid); // ✅ await the async function
     console.log(school);
-    
+    const hashtags = [...content.matchAll(/#(\w+)/g)].map(match => match[1]);
     leggTilDokument("Threads", {
       content: content,
       authorId: user.uid,
       authorName: user.displayName || "Anonym",
       createdAt: new Date(),
       school: school,
-      likes: []
+      likes: [],
+      hashtags: hashtags
     })
     .then(() => {
       e.target.reset();
@@ -283,13 +287,17 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
 // AUTH STATE MONITORING
 // React to authentication changes
 // ============================================
-overvåkBruker((user) => {
+overvåkBruker(async (user) => {
   if (user) {
     console.log("Innlogget:", user.email, "Verifisert:", user.emailVerified);
     
     // If user is logged in and verified, show main page
     if (user.emailVerified) {
       showMainPage();
+      await updateUserPresence(user.uid, "online");
+      window.addEventListener("beforeunload", () => {
+        updateUserPresence(user.uid, "offline");
+      });
     } else {
       // User logged in but not verified, keep on auth screen
       console.log("Vennligst verifiser eposten din");
@@ -297,6 +305,7 @@ overvåkBruker((user) => {
   } else {
     console.log("Ikke logget inn");
     showLogin();
+    
   }
 });
 
@@ -354,13 +363,66 @@ overvåkBruker( async (user) => {
     //document.getElementById("profileName").textContent = displayName;
     let initals_els = document.querySelectorAll(".initials");
     initals_els.forEach(el => el.textContent = displayName.split(" ").map(n => n[0]).join("").toUpperCase());
-      await updateUserPresence(user.uid, "online");
-      window.addEventListener("beforeunload", () => {
-        updateUserPresence(user.uid, "offline");
-      });
     }
 });
 
+
+//show online people from each school
+const schoolContainer = document.getElementById("online-counter"); // your card container
+
+overvåkOnlineBrukere((onlineBySchool) => {
+  // Remove old school info elements
+  const oldInfos = schoolContainer.querySelectorAll(".school-info");
+  oldInfos.forEach(el => el.remove());
+
+  // Sort schools alphabetically
+  const sortedSchools = Object.keys(onlineBySchool).sort();
+
+  // Create new elements for each school
+  sortedSchools.forEach(school => {
+    const schoolInfo = document.createElement("div");
+    schoolInfo.classList.add("school-info");
+
+    const schoolName = document.createElement("span");
+    schoolName.classList.add("school-name");
+    schoolName.textContent = school;
+
+    const schoolCount = document.createElement("span");
+    schoolCount.classList.add("school-count");
+    schoolCount.textContent = `${onlineBySchool[school]} online`;
+
+    schoolInfo.appendChild(schoolName);
+    schoolInfo.appendChild(schoolCount);
+    schoolContainer.appendChild(schoolInfo);
+  });
+});
+
+//hashtag sidebar:
+
+const trendingContainer = document.getElementById("popular-hashtags"); // second card (Populært nå)
+
+overvåkTrendingHashtags((trending) => {
+  // Remove old topics
+  const oldItems = trendingContainer.querySelectorAll(".trending-item");
+  oldItems.forEach(el => el.remove());
+
+  trending.forEach(([tag, count]) => {
+    const item = document.createElement("div");
+    item.classList.add("trending-item");
+
+    const topic = document.createElement("div");
+    topic.classList.add("trending-topic");
+    topic.textContent = `#${tag}`;
+
+    const countEl = document.createElement("div");
+    countEl.classList.add("trending-count");
+    countEl.textContent = `${count} tråder`;
+
+    item.appendChild(topic);
+    item.appendChild(countEl);
+    trendingContainer.appendChild(item);
+  });
+});
 
 // ==========================================
 // switch between recent and popular search
@@ -390,6 +452,5 @@ document.getElementById("nylig").addEventListener("click", () => {
 document.getElementById("schoolFilter").addEventListener("change", (e) => {
   visTråderLive(e.target.value);
 });
-
 
 visTråderLive()

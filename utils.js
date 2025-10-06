@@ -170,6 +170,51 @@ async function updateUserPresence(uid, state) {
   });
 }
 
+function overvåkOnlineBrukere(callback) {
+  const usersRef = collection(db, "users");
+  return onSnapshot(usersRef, (snapshot) => {
+    const onlineBySchool = {};
+
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      if (data.state === "online" && data.school) {
+        if (!onlineBySchool[data.school]) onlineBySchool[data.school] = 0;
+        onlineBySchool[data.school]++;
+      }
+    });
+
+    callback(onlineBySchool);
+  });
+}
+
+function overvåkTrendingHashtags(callback) {
+  const threadsRef = collection(db, "Threads");
+  return onSnapshot(threadsRef, (snapshot) => {
+    const hashtagCounts = {};
+
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      if (Array.isArray(data.hashtags)) {
+        data.hashtags.forEach(tag => {
+          const normalized = tag.trim();
+          if (normalized) {
+            if (!hashtagCounts[normalized]) hashtagCounts[normalized] = 0;
+            hashtagCounts[normalized]++;
+          }
+        });
+      }
+    });
+
+    // Sort by most used
+    const sorted = Object.entries(hashtagCounts)
+      .sort((a, b) => b[1] - a[1]) // most popular first
+      .slice(0, 5); // top 5
+
+    callback(sorted); // e.g. [["MatteEksamen", 23], ["Høstferie", 19]]
+  });
+}
+
+
 
   
 
@@ -185,6 +230,8 @@ export {
   overvåkBruker,
   hentSkole,
   toggleLike,
-  updateUserPresence
+  updateUserPresence,
+  overvåkOnlineBrukere,
+  overvåkTrendingHashtags
 };
 
