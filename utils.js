@@ -12,7 +12,12 @@ import {
   getDoc,
   arrayUnion,
   arrayRemove,
-  serverTimestamp
+  serverTimestamp,
+  query,           // ← ADD THIS
+  where,           // ← ADD THIS
+  orderBy,         // ← ADD THIS
+  limit,           // ← ADD THIS
+  writeBatch
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 import {
@@ -214,11 +219,77 @@ function overvåkTrendingHashtags(callback) {
   });
 }
 
+// ============================================
+// NOTIFICATION FUNCTIONS
+// ============================================
+
+// Create a notification
+async function createNotification(userId, type, data) {
+  const db = getFirestore();
+  return addDoc(collection(db, "Notifications"), {
+    userId: userId,
+    type: type, // "reply", "like", "mention"
+    threadId: data.threadId,
+    actorName: data.actorName, // Person who triggered the notification
+    content: data.content, // Preview text
+    read: false,
+    createdAt: new Date()
+  });
+}
+
+// Mark notification as read
+async function markNotificationRead(notificationId) {
+  const db = getFirestore();
+  const notificationRef = doc(db, "Notifications", notificationId);
+  await updateDoc(notificationRef, { read: true });
+}
+
+// Mark all notifications as read for a user
+async function markAllNotificationsRead(userId) {
+  const db = getFirestore();
+  const q = query(
+    collection(db, "Notifications"),
+    where("userId", "==", userId),
+    where("read", "==", false)
+  );
+  
+  const snapshot = await getDocs(q);
+  const batch = writeBatch(db);
+  
+  snapshot.docs.forEach(docSnap => {
+    batch.update(docSnap.ref, { read: true });
+  });
+  
+  await batch.commit();
+}
+
+// Listen to notifications for a user
+function overvåkNotifications(userId, callback) {
+  const db = getFirestore();
+  const q = query(
+    collection(db, "Notifications"),
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc"),
+    limit(50)
+  );
+  
+  return onSnapshot(q, (snapshot) => {
+    const notifications = snapshot.docs.map(docSnap => ({
+      id: docSnap.id,
+      ...docSnap.data()
+    }));
+    callback(notifications);
+  });
+}
 
 
   
 
 export {
+  createNotification,
+  markNotificationRead,
+  markAllNotificationsRead,
+  overvåkNotifications,
   hentDokumenter,
   leggTilDokument,
   slettDokument,

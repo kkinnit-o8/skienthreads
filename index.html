@@ -86,8 +86,26 @@
           <option>Skogmo VGS</option>
           <option>Hjalmar VGS</option>
         </select>
+        
+        <!-- Notification bell button -->
+        <button class="notification-btn" id="notificationBtn">
+          🔔
+          <span class="notification-badge hidden" id="notificationBadge">0</span>
+        </button>
+        
         <!-- User profile button (shows initials) -->
         <button class="profile-btn initials">xx</button>
+      </div>
+    </div>
+    
+    <!-- Notification dropdown panel -->
+    <div class="notification-panel hidden" id="notificationPanel">
+      <div class="notification-header">
+        <h3>Varsler</h3>
+        <button class="mark-all-read" id="markAllRead">Merk alle som lest</button>
+      </div>
+      <div class="notification-list" id="notificationList">
+        <!-- Notifications will be inserted here -->
       </div>
     </div>
   </nav>
