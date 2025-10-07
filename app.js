@@ -25,8 +25,13 @@ document.getElementById("post-thread").addEventListener("submit", async (e) => {
   e.preventDefault(); // 🚀 stop page reload
 
   const content = e.target.querySelector("textarea").value;
-  
-  overvåkBruker(async (user) => { // make this callback async
+  post(content)
+  e.target.reset();
+});
+
+
+function post(content, parentId = null){
+    overvåkBruker(async (user) => { // make this callback async
     if (!user) {
       alert("Du må være logget inn for å poste!");
       return;
@@ -46,15 +51,14 @@ document.getElementById("post-thread").addEventListener("submit", async (e) => {
       createdAt: new Date(),
       school: school,
       likes: [],
-      hashtags: hashtags
+      hashtags: hashtags,
+      parentId: parentId
     })
     .then(() => {
-      e.target.reset();
-      alert("Tråd postet!");
+      alert("postet!");
     });
   });
-});
-
+}
 
 
 // ============================================
@@ -115,6 +119,7 @@ function visTråderLive(selectedSchool = "Alle skoler") {
     if (selectedSchool !== "Alle skoler") {
       filteredDocs = docs.filter(thread => thread && thread.school === selectedSchool);
     }
+    filteredDocs = filteredDocs.filter(thread => thread && !thread.parentId)
 
     // sortere (behandler mulig Firestore Timestamp)
     filteredDocs.sort((a, b) => {
@@ -131,111 +136,254 @@ function visTråderLive(selectedSchool = "Alle skoler") {
     const fragment = document.createDocumentFragment();
 
     filteredDocs.forEach((data) => {
-      // defensiv fallback for data
-      data = data || {};
-      const postEl = document.createElement("div");
-      postEl.classList.add("thread-card");
-
-      // --- Header ---
-      const header = document.createElement("div");
-      header.classList.add("thread-header");
-
-      const avatar = document.createElement("div");
-      avatar.classList.add("user-avatar");
-      // getInitials antas sikker: wrap i String og fallback
-      avatar.textContent = String(getInitials(data.authorName || "Anonym"));
-
-      const userInfo = document.createElement("div");
-      userInfo.classList.add("thread-user-info");
-
-      const username = document.createElement("div");
-      username.classList.add("thread-username");
-      username.textContent = String(data.authorName || "Anonym");
-
-      const meta = document.createElement("div");
-      meta.classList.add("thread-meta");
-      // timeAgo antas å returnere streng - gjøres defensivt
-      try {
-        meta.appendChild(document.createTextNode(String(timeAgo(data.createdAt))));
-      } catch (err) {
-        meta.appendChild(document.createTextNode(""));
-      }
-
-      const schoolBadge = document.createElement("span");
-      schoolBadge.classList.add("thread-school-badge");
-      schoolBadge.textContent = String(data.school || "");
-
-      // legg til meta/ badge (mellomrom for lesbarhet)
-      meta.appendChild(document.createTextNode(" "));
-      meta.appendChild(schoolBadge);
-
-      userInfo.appendChild(username);
-      userInfo.appendChild(meta);
-
-      header.appendChild(avatar);
-      header.appendChild(userInfo);
-
-      // --- Content (sikkert, bruker textContent) ---
-      const contentEl = document.createElement("div");
-      contentEl.classList.add("thread-content");
-      contentEl.textContent = String(data.content || "");
-
-      // --- Actions ---
-      const actions = document.createElement("div");
-      actions.classList.add("thread-actions");
-
-      // Like-knapp
-      const likeBtn = document.createElement("button");
-      likeBtn.classList.add("action-btn", "like");
-
-      const userLiked = currentUser && Array.isArray(data.likes) && data.likes.includes(currentUser.uid);
-      const likeEmoji = document.createElement("span");
-      likeEmoji.textContent = userLiked ? "❤️" : "🤍";
-
-      const likeCount = document.createElement("span");
-      likeCount.textContent = String((Array.isArray(data.likes) ? data.likes.length : 0));
-
-      likeBtn.appendChild(likeEmoji);
-      likeBtn.appendChild(likeCount);
-
-      likeBtn.addEventListener("click", () => {
-        if (!currentUser) {
-          alert("Du må være logget inn for å like!");
-          return;
-        }
-        // toggleLike bør være en allerede definert funksjon
-        toggleLike(data.id, currentUser.uid);
-      });
-
-      // Comment-knapp
-      const commentBtn = document.createElement("button");
-      commentBtn.classList.add("action-btn", "comment");
-
-      const commentEmoji = document.createElement("span");
-      commentEmoji.textContent = "💬";
-
-      const commentCount = document.createElement("span");
-      commentCount.textContent = String((Array.isArray(data.comments) ? data.comments.length : 0));
-
-      commentBtn.appendChild(commentEmoji);
-      commentBtn.appendChild(commentCount);
-
-      actions.appendChild(likeBtn);
-      actions.appendChild(commentBtn);
-
-      // --- Beste måte å bygge elementet på ---
-      postEl.appendChild(header);
-      postEl.appendChild(contentEl);
-      postEl.appendChild(actions);
-
+      const commentCount = docs.filter(d => d.parentId === data.id).length;
+      let postEl = getThread(data, currentUser, container, commentCount);
       fragment.appendChild(postEl);
     });
+
 
     container.appendChild(fragment);
   });
 }
 
+function togglecommentsection(threadId, user, container) {
+  const threadEl = container.querySelector(`[data-id="${threadId}"]`);
+  if (!threadEl) return;
 
+  // if already open, remove it
+  let existing = threadEl.querySelector(".comments-section");
+  if (existing) {
+    existing.remove();
+    return;
+  }
+
+  // create comments section
+  const commentsSection = document.createElement("div");
+  commentsSection.classList.add("comments-section");
+
+  // --- Form ---
+  const form = document.createElement("form");
+  form.classList.add("comment-form");
+
+  const inputContainer = document.createElement("div");
+  inputContainer.classList.add("comment-input-container");
+
+  const avatar = document.createElement("div");
+  avatar.classList.add("user-avatar", "small");
+  avatar.textContent = getInitials(user.displayName || "Bruker");
+
+  const textarea = document.createElement("textarea");
+  textarea.classList.add("comment-input");
+  textarea.placeholder = "Skriv en kommentar...";
+  textarea.required = true;
+
+  inputContainer.appendChild(avatar);
+  inputContainer.appendChild(textarea);
+
+  const formActions = document.createElement("div");
+  formActions.classList.add("comment-actions");
+
+  const submitBtn = document.createElement("button");
+  submitBtn.classList.add("btn", "btn-primary", "btn-small");
+  submitBtn.type = "submit";
+  submitBtn.textContent = "Kommenter";
+
+  formActions.appendChild(submitBtn);
+  form.appendChild(inputContainer);
+  form.appendChild(formActions);
+
+  // --- Comments list ---
+  const commentsList = document.createElement("div");
+  commentsList.classList.add("comments-list");
+
+  // Append everything
+  commentsSection.appendChild(form);
+  commentsSection.appendChild(commentsList);
+  threadEl.appendChild(commentsSection);
+
+  // --- Load existing comments ---
+  visKommentarerLive(threadId, commentsList, user);
+
+  // --- Handle new comment submission ---
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const content = textarea.value.trim();
+    if (!content) return;
+
+    await post(content, threadId); // reuse your existing upload function
+    textarea.value = "";
+  });
+}
+
+function visKommentarerLive(threadId, commentsList) {
+  let currentUser = null;
+  overvåkBruker(user => currentUser = user);
+
+  visDokumenterLive("Threads", (docs) => {
+    // Filter to only comments for this thread
+    const comments = docs.filter(d => d.parentId === threadId);
+
+    // Sort newest first
+    comments.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt).getTime();
+      const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt).getTime();
+      return bTime - aTime;
+    });
+
+    // Clear current list
+    commentsList.innerHTML = "";
+
+    comments.forEach(comment => {
+      const card = document.createElement("div");
+      card.classList.add("comment-card");
+
+      // --- Header ---
+      const header = document.createElement("div");
+      header.classList.add("comment-header");
+
+      const avatar = document.createElement("div");
+      avatar.classList.add("user-avatar", "small");
+      avatar.textContent = getInitials(comment.authorName || "Anonym");
+
+      const userInfo = document.createElement("div");
+      userInfo.classList.add("comment-user-info");
+
+      const username = document.createElement("div");
+      username.classList.add("comment-username");
+      username.textContent = comment.authorName || "Anonym";
+
+      const meta = document.createElement("div");
+      meta.classList.add("comment-meta");
+      meta.textContent = `${timeAgo(comment.createdAt)} `;
+
+      const badge = document.createElement("span");
+      badge.classList.add("comment-school-badge");
+      badge.textContent = comment.school || "";
+
+      meta.appendChild(badge);
+      userInfo.appendChild(username);
+      userInfo.appendChild(meta);
+      header.appendChild(avatar);
+      header.appendChild(userInfo);
+
+      // --- Content ---
+      const content = document.createElement("div");
+      content.classList.add("comment-content");
+      content.textContent = comment.content;
+
+      // --- Actions ---
+      const actions = document.createElement("div");
+      actions.classList.add("comment-actions");
+
+      const likeBtn = document.createElement("button");
+      likeBtn.classList.add("action-btn", "small");
+
+      const userLiked = currentUser && comment.likes?.includes(currentUser.uid);
+      const heart = document.createElement("span");
+      heart.textContent = userLiked ? "❤️" : "🤍";
+
+      const likeCount = document.createElement("span");
+      likeCount.textContent = ` ${comment.likes?.length || 0}`;
+
+      likeBtn.appendChild(heart);
+      likeBtn.appendChild(likeCount);
+
+      likeBtn.addEventListener("click", () => {
+        if (!currentUser) return alert("Du må være logget inn for å like!");
+        toggleLike(comment.id, currentUser.uid);
+      });
+
+      const replyBtn = document.createElement("button");
+      replyBtn.classList.add("action-btn", "small");
+      replyBtn.textContent = "💬";
+
+      actions.appendChild(likeBtn);
+      actions.appendChild(replyBtn);
+
+      // --- Put everything together ---
+      card.appendChild(header);
+      card.appendChild(content);
+      card.appendChild(actions);
+      commentsList.appendChild(card);
+    });
+  });
+}
+
+
+
+
+function getThread(data, currentUser, container, commentcount) {
+  const postEl = document.createElement("div");
+  postEl.classList.add("thread-card");
+  postEl.dataset.id = data.id;
+
+  // Header
+  const header = document.createElement("div");
+  header.classList.add("thread-header");
+
+  const avatar = document.createElement("div");
+  avatar.classList.add("user-avatar");
+  avatar.textContent = String(getInitials(data.authorName || "Anonym"));
+
+  const userInfo = document.createElement("div");
+  userInfo.classList.add("thread-user-info");
+
+  const username = document.createElement("div");
+  username.classList.add("thread-username");
+  username.textContent = String(data.authorName || "Anonym");
+
+  const meta = document.createElement("div");
+  meta.classList.add("thread-meta");
+  meta.textContent = String(timeAgo(data.createdAt));
+
+  const schoolBadge = document.createElement("span");
+  schoolBadge.classList.add("thread-school-badge");
+  schoolBadge.textContent = String(data.school || "");
+
+  meta.appendChild(document.createTextNode(" "));
+  meta.appendChild(schoolBadge);
+  userInfo.appendChild(username);
+  userInfo.appendChild(meta);
+  header.appendChild(avatar);
+  header.appendChild(userInfo);
+
+  // Content
+  const contentEl = document.createElement("div");
+  contentEl.classList.add("thread-content");
+  contentEl.textContent = String(data.content || "");
+
+  // Actions
+  const actions = document.createElement("div");
+  actions.classList.add("thread-actions");
+
+  const likeBtn = document.createElement("button");
+  likeBtn.classList.add("action-btn", "like");
+
+  const userLiked = currentUser && Array.isArray(data.likes) && data.likes.includes(currentUser.uid);
+  likeBtn.textContent = userLiked ? `❤️ ${data.likes.length}` : `🤍 ${data.likes.length}`;
+
+  likeBtn.addEventListener("click", () => {
+    if (!currentUser) return alert("Du må være logget inn for å like!");
+    toggleLike(data.id, currentUser.uid);
+  });
+
+  const commentBtn = document.createElement("button");
+  commentBtn.classList.add("action-btn", "comment");
+  commentBtn.textContent = `💬 ${commentcount || 0}`;
+
+  commentBtn.addEventListener("click", () => {
+    if (!currentUser) return alert("Du må være logget inn for å kommentere!");
+    togglecommentsection(data.id, currentUser.uid, container);
+  });
+
+  actions.appendChild(likeBtn);
+  actions.appendChild(commentBtn);
+
+  postEl.appendChild(header);
+  postEl.appendChild(contentEl);
+  postEl.appendChild(actions);
+  return postEl;
+}
 
 
 

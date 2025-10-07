@@ -539,6 +539,7 @@ body {
 
 .trending-item:hover {
   color: var(--primary-color);
+  transform: translateX(5px);
 }
 
 /* Hashtag text */
@@ -600,6 +601,13 @@ body {
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.Threads{
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 /* ============================================ */
@@ -670,4 +678,147 @@ body {
   .thread-actions {
     flex-wrap: wrap;
   }
+}
+
+.comments-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.comments-section.expanded {
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Comment form */
+.comment-form {
+  margin-bottom: 16px;
+}
+
+.comment-input-container {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.comment-input {
+  flex: 1;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 60px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.comment-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.comment-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-small {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Individual comment */
+.comment-card {
+  padding: 16px;
+  background: var(--background);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.nested-comments {
+  margin-top: 12px;
+}
+
+/* Comment header */
+.comment-header {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.comment-user-info {
+  flex: 1;
+}
+
+.comment-username {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.comment-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.comment-school-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  background: var(--primary-light);
+  color: var(--primary-color);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+/* Comment content */
+.comment-content {
+  margin-bottom: 12px;
+  line-height: 1.5;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+/* Comment actions */
+.comment .comment-actions {
+  display: flex;
+  gap: 16px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  justify-content: flex-start;
+}
+
+.comment .action-btn.small {
+  padding: 4px 8px;
+  font-size: 12px;
+  gap: 4px;
+}
+
+/* Small avatar for comments */
+.user-avatar.small {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+
+/* Comment toggle button active state */
+.comment-toggle.active {
+  color: var(--primary-color);
+  background: var(--primary-light);
 }

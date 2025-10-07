@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Skien Threads</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="apple-touch-icon" sizes="180x180" href="..favicon_io/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-  <link rel="manifest" href="/site.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon_io/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon_io/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon_io/favicon-16x16.png">
+  <link rel="manifest" href="favicon_io/site.webmanifest">
 </head>
 <body>
   <!-- ============================================ -->
@@ -123,7 +123,7 @@
       <!-- THREAD CARD 1 -->
       <!-- ============================================ -->
       
-      <div id="Threads">
+      <div id="Threads" class="Threads">
       <div class="thread-card">
         <!-- Thread header with user info -->
         <div class="thread-header">
@@ -155,6 +155,46 @@
             <span>🔄</span>
             <span>3</span>
           </button>
+        </div>
+        
+        <div class="comments-section">
+            <form class="comment-form">
+            <div class="comment-input-container">
+              <div class="user-avatar small">JD</div>
+              <textarea class="comment-input" placeholder="Skriv en kommentar..." required></textarea>
+            </div>
+            <div class="comment-actions">
+              <button class="btn btn-primary btn-small" type="submit">Kommenter</button>
+            </div>
+          </form>
+          <div class="comments-list">
+
+             <div class="comment-card">
+              <div class="comment-header">
+                <div class="user-avatar small">EJ</div>
+                <div class="comment-user-info">
+                  <div class="comment-username">Erik Johansen</div>
+                  <div class="comment-meta">
+                    2 timer siden
+                    <span class="comment-school-badge">Bamble VGS</span>
+                  </div>
+                </div>
+              </div>
+              <div class="comment-content">
+                Jeg kommer! Hvor trenes det?
+              </div>
+              <div class="comment-actions">
+                <button class="action-btn small">
+                  <span>❤️</span>
+                  <span>8</span>
+                </button>
+                <button class="action-btn small">
+                  <span>💬</span>
+                  <span>1</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
