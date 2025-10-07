@@ -822,3 +822,19 @@ body {
   color: var(--primary-color);
   background: var(--primary-light);
 }
+
+.nested-comment {
+  margin-left: 1.5rem;
+  border-left: 2px solid #e1e5e9;
+  padding-left: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 0 8px 8px 0;
+}
+
+.comments-section .comments-section {
+  margin-left: 1rem;
+}
+
+.nested-comments-list {
+  margin-top: 0.5rem;
+}

@@ -15,6 +15,7 @@ import {
 
 
 let sortThreadsBy = "recent"; // or "popular"
+let schoolfilter = "Alle skoler"
 
 
 // ============================================
@@ -101,63 +102,131 @@ function like(threadid){
 
 }
 
+let currentThreadsData = []; // Store current threads data
+let isManualSort = false; // Flag to track if we're manually sorting
+
 function visTråderLive(selectedSchool = "Alle skoler") {
   const container = document.getElementById("Threads");
+  console.log("🔄 visTråderLive called with:", { selectedSchool, sortThreadsBy });
 
   let currentUser = null;
   overvåkBruker(user => currentUser = user);
 
   visDokumenterLive("Threads", (docs) => {
-    // defensiv: forventer en array
+    console.log("📊 Data received:", docs.length, "docs");
+    
     if (!Array.isArray(docs)) return;
 
-    // tøm container sikkert
-    container.innerHTML = "";
+    currentThreadsData = docs; // Store the data
 
-    // filter etter skole
-    let filteredDocs = docs;
-    if (selectedSchool !== "Alle skoler") {
-      filteredDocs = docs.filter(thread => thread && thread.school === selectedSchool);
+    // If this is a manual sort trigger, don't recreate everything
+    if (isManualSort) {
+      isManualSort = false;
+      applySorting(selectedSchool, currentUser, container);
+      return;
     }
-    filteredDocs = filteredDocs.filter(thread => thread && !thread.parentId)
 
-    // sortere (behandler mulig Firestore Timestamp)
-    filteredDocs.sort((a, b) => {
-      if (sortThreadsBy === "recent") {
-        const aMillis = a?.createdAt?.toMillis ? a.createdAt.toMillis() : (new Date(a.createdAt)).getTime();
-        const bMillis = b?.createdAt?.toMillis ? b.createdAt.toMillis() : (new Date(b.createdAt)).getTime();
-        return bMillis - aMillis;
-      } else if (sortThreadsBy === "popular") {
-        return (b.likes?.length || 0) - (a.likes?.length || 0);
-      }
-      return 0;
-    });
-
-    const fragment = document.createDocumentFragment();
-
-    filteredDocs.forEach((data) => {
-      const commentCount = docs.filter(d => d.parentId === data.id).length;
-      let postEl = getThread(data, currentUser, container, commentCount);
-      fragment.appendChild(postEl);
-    });
-
-
-    container.appendChild(fragment);
+    // Normal live update - filter and display
+    applySorting(selectedSchool, currentUser, container);
   });
 }
 
-function togglecommentsection(threadId, user, container) {
-  const threadEl = container.querySelector(`[data-id="${threadId}"]`);
-  if (!threadEl) return;
+function applySorting(selectedSchool, currentUser, container) {
+  // filter etter skole
+  let filteredDocs = currentThreadsData;
+  if (selectedSchool !== "Alle skoler") {
+    filteredDocs = currentThreadsData.filter(thread => thread && thread.school === selectedSchool);
+  }
+  filteredDocs = filteredDocs.filter(thread => thread && !thread.parentId)
 
-  // if already open, remove it
-  let existing = threadEl.querySelector(".comments-section");
+  // sortere
+  filteredDocs.sort((a, b) => {
+    if (sortThreadsBy === "recent") {
+      const aMillis = a?.createdAt?.toMillis ? a.createdAt.toMillis() : (new Date(a.createdAt)).getTime();
+      const bMillis = b?.createdAt?.toMillis ? b.createdAt.toMillis() : (new Date(b.createdAt)).getTime();
+      return bMillis - aMillis;
+    } else if (sortThreadsBy === "popular") {
+      return (b.likes?.length || 0) - (a.likes?.length || 0);
+    }
+    return 0;
+  });
+
+  // Get existing threads
+  const existingThreads = new Map();
+  container.querySelectorAll('.thread-card').forEach(threadEl => {
+    const threadId = threadEl.dataset.id;
+    if (threadId) {
+      existingThreads.set(threadId, threadEl);
+    }
+  });
+
+  // Check if we actually need to reorder (only for manual sorts)
+  if (isManualSort) {
+    isManualSort = false;
+    
+    // Remove and re-add threads in correct order without clearing container
+    filteredDocs.forEach((data) => {
+      const existingThread = existingThreads.get(data.id);
+      if (existingThread) {
+        // Move to correct position
+        existingThread.remove();
+        container.appendChild(existingThread);
+      }
+    });
+  } else {
+    // For live updates, only update the changed threads
+    filteredDocs.forEach((data) => {
+      const commentCount = currentThreadsData.filter(d => d.parentId === data.id).length;
+      const existingThread = existingThreads.get(data.id);
+      
+      if (existingThread) {
+        // Just update content, don't move
+        updateThreadContent(existingThread, data, currentUser, commentCount);
+      } else {
+        // Create new thread at the end
+        let postEl = getThread(data, currentUser, container, commentCount);
+        container.appendChild(postEl);
+      }
+    });
+
+    // Remove deleted threads
+    existingThreads.forEach((threadEl, threadId) => {
+      if (!filteredDocs.find(doc => doc.id === threadId)) {
+        threadEl.remove();
+      }
+    });
+  }
+}
+
+// Helper function to update thread content without recreating the element
+function updateThreadContent(threadEl, data, currentUser, commentCount) {
+  // Update likes count
+  const likeBtn = threadEl.querySelector('.action-btn.like');
+  const userLiked = currentUser && Array.isArray(data.likes) && data.likes.includes(currentUser.uid);
+  likeBtn.textContent = userLiked ? `❤️ ${data.likes.length}` : `🤍 ${data.likes.length}`;
+
+  // Update comment count
+  const commentBtn = threadEl.querySelector('.action-btn.comment');
+  commentBtn.textContent = `💬 ${commentCount || 0}`;
+}
+
+function togglecommentsection(threadId, user, container, isNested = false) {
+  // For nested comments (replies to comments), use the container directly
+  // For main thread comments, find the thread card
+  const targetEl = isNested ? container : container.closest('.thread-card') || container;
+  
+  // If already open, remove it
+  let existing = targetEl.querySelector(".comments-section");
   if (existing) {
+    // If there's a cleanup function, call it
+    if (existing.cleanup) {
+      existing.cleanup();
+    }
     existing.remove();
     return;
   }
 
-  // create comments section
+  // Create comments section
   const commentsSection = document.createElement("div");
   commentsSection.classList.add("comments-section");
 
@@ -199,10 +268,18 @@ function togglecommentsection(threadId, user, container) {
   // Append everything
   commentsSection.appendChild(form);
   commentsSection.appendChild(commentsList);
-  threadEl.appendChild(commentsSection);
+  
+  // For nested comments, append to the specific comment card
+  // For main thread comments, append to the thread card
+  targetEl.appendChild(commentsSection);
 
-  // --- Load existing comments ---
-  visKommentarerLive(threadId, commentsList, user);
+  // --- Load existing comments and get cleanup function ---
+  const cleanup = visKommentarerLive(threadId, commentsList, user, isNested);
+  
+  // Store cleanup function on the comments section
+  if (cleanup) {
+    commentsSection.cleanup = cleanup;
+  }
 
   // --- Handle new comment submission ---
   form.addEventListener("submit", async (e) => {
@@ -210,18 +287,18 @@ function togglecommentsection(threadId, user, container) {
     const content = textarea.value.trim();
     if (!content) return;
 
-    await post(content, threadId); // reuse your existing upload function
+    await post(content, threadId);
     textarea.value = "";
   });
 }
 
-function visKommentarerLive(threadId, commentsList) {
+function visKommentarerLive(parentId, commentsList, user, isNested = false) {
   let currentUser = null;
   overvåkBruker(user => currentUser = user);
 
-  visDokumenterLive("Threads", (docs) => {
-    // Filter to only comments for this thread
-    const comments = docs.filter(d => d.parentId === threadId);
+  const updateComments = (docs) => {
+    // Filter to only comments for this specific parent (thread or comment)
+    const comments = docs.filter(d => d.parentId === parentId);
 
     // Sort newest first
     comments.sort((a, b) => {
@@ -236,6 +313,7 @@ function visKommentarerLive(threadId, commentsList) {
     comments.forEach(comment => {
       const card = document.createElement("div");
       card.classList.add("comment-card");
+      if (isNested) card.classList.add("nested-comment");
 
       // --- Header ---
       const header = document.createElement("div");
@@ -293,9 +371,15 @@ function visKommentarerLive(threadId, commentsList) {
         toggleLike(comment.id, currentUser.uid);
       });
 
+      // Reply button for nested comments
       const replyBtn = document.createElement("button");
       replyBtn.classList.add("action-btn", "small");
-      replyBtn.textContent = "💬";
+      replyBtn.textContent = "💬 Svar";
+
+      replyBtn.addEventListener("click", () => {
+        if (!currentUser) return alert("Du må være logget inn for å svare!");
+        togglecommentsection(comment.id, currentUser, card, true); // true = isNested
+      });
 
       actions.appendChild(likeBtn);
       actions.appendChild(replyBtn);
@@ -305,8 +389,28 @@ function visKommentarerLive(threadId, commentsList) {
       card.appendChild(content);
       card.appendChild(actions);
       commentsList.appendChild(card);
+
+      // Recursively load nested comments for this comment
+      if (!isNested) {
+        const nestedCommentsList = document.createElement("div");
+        nestedCommentsList.classList.add("nested-comments-list");
+        card.appendChild(nestedCommentsList);
+        visKommentarerLive(comment.id, nestedCommentsList, user, true);
+      }
     });
-  });
+  };
+
+  // Set up live listener - we'll track it manually since no unsubscribe is returned
+  visDokumenterLive("Threads", updateComments);
+  
+  // Since visDokumenterLive doesn't return unsubscribe, we'll use a different approach
+  // We'll store a flag to indicate this comments section is active
+  commentsList._isActive = true;
+  
+  // Return a cleanup function that we can call
+  return () => {
+    commentsList._isActive = false;
+  };
 }
 
 
@@ -316,6 +420,9 @@ function getThread(data, currentUser, container, commentcount) {
   const postEl = document.createElement("div");
   postEl.classList.add("thread-card");
   postEl.dataset.id = data.id;
+
+  // Store the thread data on the element for later updates
+  postEl._threadData = data;
 
   // Header
   const header = document.createElement("div");
@@ -373,7 +480,7 @@ function getThread(data, currentUser, container, commentcount) {
 
   commentBtn.addEventListener("click", () => {
     if (!currentUser) return alert("Du må være logget inn for å kommentere!");
-    togglecommentsection(data.id, currentUser.uid, container);
+    togglecommentsection(data.id, currentUser, postEl);
   });
 
   actions.appendChild(likeBtn);
@@ -577,28 +684,32 @@ overvåkTrendingHashtags((trending) => {
 
 document.getElementById("popular").addEventListener("click", () => {
   sortThreadsBy = "popular"
-
   const recent = document.getElementById("nylig")
   recent.classList.remove("active")
-
   const popular = document.getElementById("popular")
   popular.classList.add("active")
-  visTråderLive()
+  
+  // Trigger manual sort without recreating everything
+  isManualSort = true;
+  applySorting(schoolfilter, null, document.getElementById("Threads"));
 })
 
 document.getElementById("nylig").addEventListener("click", () => {
   sortThreadsBy = "recent"
-
   const recent = document.getElementById("nylig")
   recent.classList.add("active")
-
   const popular = document.getElementById("popular")
   popular.classList.remove("active")
-  visTråderLive()
+  
+  // Trigger manual sort without recreating everything
+  isManualSort = true;
+  applySorting(schoolfilter, null, document.getElementById("Threads"));
 })
 
 document.getElementById("schoolFilter").addEventListener("change", (e) => {
-  visTråderLive(e.target.value);
+  schoolfilter = e.target.value
+  isManualSort = true;
+  applySorting(schoolfilter, null, document.getElementById("Threads"));
 });
 
 visTråderLive()
