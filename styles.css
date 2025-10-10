@@ -208,6 +208,7 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  flex-shrink: 0;
 }
 
 /* ============================================ */
@@ -232,6 +233,7 @@ body {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
+  white-space: nowrap; /* Prevent text wrapping */
 }
 
 .tab-btn:hover {
@@ -272,20 +274,63 @@ body {
   border-color: var(--primary-color);
 }
 
-/* Profile button (circular with initials) */
+/* Notification button with fixed size */
+.notification-btn {
+  position: relative;
+  background: none;
+  border: none;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+}
+
+.notification-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.notification-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #e74c3c;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: bold;
+  padding: 0.15rem 0.35rem;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1;
+}
+
+.notification-badge.hidden {
+  display: none;
+}
+
+/* Profile button (circular with initials) - fixed size to prevent stretch */
 .profile-btn {
   width: 40px;
   height: 40px;
+  min-width: 40px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
   color: white;
   border: none;
   font-weight: 600;
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform 0.3s ease;
+  flex-shrink: 0;
 }
 
 .profile-btn:hover {
@@ -615,7 +660,7 @@ body {
 /* Mobile and tablet adjustments */
 /* ============================================ */
 
-/* Tablet: Stack sidebar on top */
+/* Large tablet: Stack sidebar on top */
 @media (max-width: 968px) {
   .main-container {
     grid-template-columns: 1fr;        /* Single column layout */
@@ -623,6 +668,59 @@ body {
 
   .sidebar {
     order: -1;                         /* Move sidebar above feed */
+  }
+}
+
+/* Tablet and smaller: Adjust navbar for better stacking */
+@media (max-width: 768px) {
+  .nav-container {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+  }
+
+  .logo {
+    order: -1;
+    font-size: 20px;
+  }
+
+  .feed-tabs {
+    order: 1;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .tab-btn {
+    flex: 1;
+    min-width: 120px;
+    max-width: 160px;
+  }
+
+  .nav-actions {
+    order: 2;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .school-selector {
+    min-width: 140px;
+    order: 1;
+    flex: 1;
+    max-width: 200px;
+  }
+
+  .notification-btn {
+    order: 2;
+    flex-shrink: 0;
+  }
+
+  .profile-btn {
+    order: 3;
+    flex-shrink: 0;
   }
 }
 
@@ -655,18 +753,26 @@ body {
   /* Navigation adjustments */
   .nav-container {
     flex-wrap: wrap;
+    gap: 10px;
   }
 
   /* Make tabs full width on mobile */
   .feed-tabs {
     order: 3;
     width: 100%;
+    justify-content: center;
+  }
+
+  .tab-btn {
+    flex: 1;
+    min-width: 120px;
   }
 
   /* Smaller school selector on mobile */
   .school-selector {
     font-size: 12px;
     padding: 6px 12px;
+    min-width: 140px;
   }
 
   /* Stack avatar and textarea vertically on mobile */
@@ -674,9 +780,135 @@ body {
     flex-direction: column;
   }
 
+  .user-avatar {
+    align-self: flex-start;
+  }
+
   /* Allow action buttons to wrap on mobile */
   .thread-actions {
     flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-start;
+  }
+
+  .action-btn {
+    flex: 1;
+    min-width: 100px;
+    justify-content: center;
+  }
+
+  /* Reduce padding on cards for mobile */
+  .thread-card,
+  .sidebar-card,
+  .create-thread {
+    padding: 16px;
+  }
+
+  /* Sidebar: Reduce padding and font sizes */
+  .sidebar-title {
+    font-size: 16px;
+  }
+
+  .trending-topic {
+    font-size: 15px;
+  }
+
+  .trending-count,
+  .school-name,
+  .school-count {
+    font-size: 12px;
+  }
+
+  /* Threads container: Adjust max-height for mobile */
+  .Threads {
+    max-height: 50vh;
+  }
+
+  /* Main container padding */
+  .main-container {
+    padding: 0 16px;
+    margin: 16px auto;
+    gap: 16px;
+  }
+}
+
+/* Small mobile: Extra adjustments for very narrow screens */
+@media (max-width: 480px) {
+  .nav-actions {
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+  }
+
+  .school-selector {
+    order: 1;
+    flex: 2;
+    max-width: 160px;
+  }
+
+  .notification-btn {
+    order: 2;
+    flex: 0 0 auto;
+  }
+
+  .profile-btn {
+    order: 3;
+    flex: 0 0 auto;
+  }
+
+  .school-selector,
+  .notification-btn,
+  .profile-btn {
+    width: auto;
+  }
+
+  .profile-btn {
+    min-width: 40px;
+  }
+
+  .feed-tabs {
+    flex-wrap: wrap;
+  }
+
+  .tab-btn {
+    min-width: auto;
+    padding: 8px 12px;
+  }
+
+  .btn-primary,
+  .action-btn {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  /* Auth forms: Reduce gaps */
+  .auth-screen form {
+    gap: 16px;
+  }
+
+  .auth-screen {
+    padding: 20px;
+    margin: 20px;
+  }
+
+  /* Comments: Ensure stacking */
+  .comment-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .comment-user-info {
+    width: 100%;
+  }
+
+  .nested-comment {
+    margin-left: 0;
+    border-left: none;
+    padding-left: 0;
+    background-color: var(--background);
   }
 }
 

@@ -363,6 +363,11 @@ export async function toggleVote(threadId, userId, voteType) {
   }
 }
 
+export async function isBanned(userId) {
+  const bans = await hentDokumenter("bans");
+  return bans.some(ban => ban.userId === userId);
+}
+
 export {
   markNotificationRead,
   markAllNotificationsRead,

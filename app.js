@@ -16,12 +16,14 @@ import {
   markAllNotificationsRead,
   overvåkNotifications,
   slettDokument,
-  getadmin
+  getadmin,
+  isBanned
 } from "./utils.js";
 
 
 let sortThreadsBy = "recent";
 let schoolfilter = "Alle skoler"
+let currentHashtag = null;
 let currentUser = null;
 let visibleThreadLimit = 10;
 let admin = false;
@@ -176,13 +178,12 @@ function visTråderLive() {
 function applySorting(selectedSchool, user, container) {
   const activeUser = user || currentUser;
   
-  let filteredDocs = currentThreadsData;
+  let baseFiltered = currentThreadsData.filter(thread => thread && !thread.parentId);
   if (selectedSchool !== "Alle skoler") {
-    filteredDocs = currentThreadsData.filter(thread => thread && thread.school === selectedSchool);
+    baseFiltered = baseFiltered.filter(thread => thread && thread.school === selectedSchool);
   }
-  filteredDocs = filteredDocs.filter(thread => thread && !thread.parentId);
 
-  filteredDocs.sort((a, b) => {
+  const sortFn = (a, b) => {
     if (sortThreadsBy === "recent") {
       const aMillis = a?.createdAt?.toMillis ? a.createdAt.toMillis() : (new Date(a.createdAt)).getTime();
       const bMillis = b?.createdAt?.toMillis ? b.createdAt.toMillis() : (new Date(b.createdAt)).getTime();
@@ -193,7 +194,19 @@ function applySorting(selectedSchool, user, container) {
       return bScore - aScore;
     }
     return 0;
-  });
+  };
+
+  let filteredDocs;
+  if (currentHashtag) {
+    const withTag = baseFiltered.filter(t => t.hashtags?.includes(currentHashtag));
+    const withoutTag = baseFiltered.filter(t => !t.hashtags?.includes(currentHashtag));
+    withTag.sort(sortFn);
+    withoutTag.sort(sortFn);
+    filteredDocs = [...withTag, ...withoutTag];
+  } else {
+    filteredDocs = baseFiltered;
+    filteredDocs.sort(sortFn);
+  }
 
   const existingThreads = new Map();
   container.querySelectorAll('.thread-card').forEach(threadEl => {
@@ -408,6 +421,27 @@ function getThread(data, activeUser, container, commentcount) {
     });
 
     actions.appendChild(deleteBtn);
+  }
+
+  if (currentUser && !admin) {
+    const reportBtn = document.createElement("button");
+    reportBtn.classList.add("action-btn", "report");
+    reportBtn.textContent = "🚨 Report";
+
+    reportBtn.addEventListener("click", async () => {
+      if (confirm("Er du sikker på at du vil rapportere denne tråden?")) {
+        await leggTilDokument("reports", {
+          threadId: data.id,
+          reporterId: currentUser.uid,
+          reporterName: currentUser.displayName || "Anonym",
+          createdAt: new Date(),
+          status: "pending"
+        });
+        alert("Rapportert!");
+      }
+    });
+
+    actions.appendChild(reportBtn);
   }
 
   actions.appendChild(vote);
@@ -808,7 +842,6 @@ overvåkTrendingHashtags((trending) => {
 
   trending.sort((a,b) => a[1]>b[1])
   trending = trending.slice(0,4)
-  console.log(trending)
 
   trending.forEach(([tag, count]) => {
     const item = document.createElement("div");
@@ -817,6 +850,25 @@ overvåkTrendingHashtags((trending) => {
     const topic = document.createElement("div");
     topic.classList.add("trending-topic");
     topic.textContent = `#${tag}`;
+    if (tag === currentHashtag) {
+      topic.style.color = '#007bff';
+      topic.style.fontWeight = 'bold';
+    }
+    topic.addEventListener("click", () => {
+      const newHashtag = currentHashtag === tag ? null : tag;
+      currentHashtag = newHashtag;
+      document.querySelectorAll(".trending-topic").forEach(t => {
+        const tTag = t.textContent.substring(1);
+        if (tTag === currentHashtag) {
+          t.style.color = '#007bff';
+          t.style.fontWeight = 'bold';
+        } else {
+          t.style.color = '';
+          t.style.fontWeight = '';
+        }
+      });
+      applySorting(schoolfilter, currentUser, document.getElementById("Threads"));
+    });
 
     const countEl = document.createElement("div");
     countEl.classList.add("trending-count");
@@ -827,6 +879,7 @@ overvåkTrendingHashtags((trending) => {
     trendingContainer.appendChild(item);
   });
 });
+
 
 
 // ============================================
@@ -1005,6 +1058,7 @@ function showAdminPanel() {
     <div class="admin-controls">
       <button id="refresh-users">Oppdater brukere</button>
       <button id="view-users">Vis brukere</button>
+      <button id="view-reports">Vis rapporter</button>
       <button id="logout-users">Logg ut alle brukere</button>
     </div>
   `;
@@ -1044,6 +1098,84 @@ function showAdminPanel() {
     });
   });
 
+  document.getElementById("view-reports").addEventListener("click", async () => {
+    const reports = await hentDokumenter("reports");
+
+    listdiv.innerHTML = "";
+
+    reports.forEach((report) => {
+      const thread = currentThreadsData.find(t => t.id === report.threadId);
+      if (!thread) {
+        const temp = document.createElement("div");
+        temp.classList.add("report-entry");
+        temp.textContent = `Thread not found: ${report.threadId}`;
+        listdiv.appendChild(temp);
+        return;
+      }
+
+      const entry = document.createElement("div");
+      entry.classList.add("report-entry");
+      entry.style.border = "1px solid #ccc";
+      entry.style.padding = "10px";
+      entry.style.marginBottom = "10px";
+      entry.style.borderRadius = "5px";
+
+      const threadContent = document.createElement("div");
+      threadContent.classList.add("reported-thread-content");
+      threadContent.innerHTML = `
+        <h4>Reported Thread by ${thread.authorName}</h4>
+        <p><strong>Content:</strong> ${thread.content}</p>
+        <p><strong>School:</strong> ${thread.school}</p>
+        <p><strong>Created:</strong> ${timeAgo(thread.createdAt)}</p>
+      `;
+
+      const reporterInfo = document.createElement("div");
+      reporterInfo.innerHTML = `
+        <p><strong>Reported by:</strong> ${report.reporterName} (${report.reporterId})</p>
+        <p><strong>Report time:</strong> ${timeAgo(report.createdAt)}</p>
+        <p><strong>Status:</strong> ${report.status || "pending"}</p>
+      `;
+
+      const actionsDiv = document.createElement("div");
+      actionsDiv.style.marginTop = "10px";
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "Delete Post";
+      deleteBtn.style.marginRight = "5px";
+      deleteBtn.addEventListener("click", async () => {
+        if (confirm("Delete this post?")) {
+          await slettDokument("Threads", report.threadId);
+          await slettDokument("reports", report.id);
+          entry.remove();
+        }
+      });
+
+      const banBtn = document.createElement("button");
+      banBtn.textContent = "Ban User";
+      banBtn.style.backgroundColor = "#e74c3c";
+      banBtn.style.color = "white";
+      banBtn.addEventListener("click", async () => {
+        if (confirm("Ban this user?")) {
+          await leggTilDokument("bans", {
+            userId: thread.authorId,
+            reason: "Reported thread",
+            bannedAt: new Date()
+          });
+          await slettDokument("reports", report.id);
+          entry.remove();
+        }
+      });
+
+      actionsDiv.appendChild(deleteBtn);
+      actionsDiv.appendChild(banBtn);
+
+      entry.appendChild(threadContent);
+      entry.appendChild(reporterInfo);
+      entry.appendChild(actionsDiv);
+      listdiv.appendChild(entry);
+    });
+  });
+
   document.getElementById("logout-users").addEventListener("click", () => {
     console.log("Logger ut alle brukere...");
   });
@@ -1070,28 +1202,106 @@ function enableAdminFeatures() {
 // AUTH STATE MONITORING
 // ============================================
 
+window.addEventListener("DOMContentLoaded", () => {
+  showMainPage();
+});
+
+// 2. Replace profile icon with "Logg inn" button if not logged in
+function updateNavForAuth(user) {
+  const navActions = document.querySelector(".nav-actions");
+  let profileBtn = navActions.querySelector(".profile-btn");
+  let loginBtn = navActions.querySelector(".login-btn");
+
+  if (user) {
+    // Show profile button, hide login button
+    if (!profileBtn) {
+      profileBtn = document.createElement("button");
+      profileBtn.className = "profile-btn initials";
+      navActions.appendChild(profileBtn);
+    }
+    if (loginBtn) loginBtn.remove();
+    profileBtn.textContent = getInitials(user.displayName || "Bruker");
+    profileBtn.onclick = () => {
+      if (confirm("Vil du logge ut?")) {
+        loggUt();
+        showLogin();
+      }
+    };
+  } else {
+    // Show login button, hide profile button
+    if (!loginBtn) {
+      loginBtn = document.createElement("button");
+      loginBtn.className = "btn btn-primary login-btn";
+      loginBtn.textContent = "Logg inn";
+      loginBtn.onclick = showLogin;
+      navActions.appendChild(loginBtn);
+    }
+    if (profileBtn) profileBtn.remove();
+  }
+}
+
+// 3. Hide features that require login
+function updateUIForAuth(user) {
+  // Hide post thread box if not logged in
+  const postThreadForm = document.getElementById("post-thread");
+  if (postThreadForm) {
+    postThreadForm.style.display = user ? "" : "none";
+  }
+  // Hide notification bell if not logged in
+  const notifBtn = document.getElementById("notificationBtn");
+  if (notifBtn) notifBtn.style.display = user ? "" : "none";
+}
+
+// ...existing code...
+
+// Add this once on page load (e.g., in DOMContentLoaded) to handle offline only once
+if (!window._presenceListenerAdded) {
+  window.addEventListener("beforeunload", () => {
+    if (currentUser?.uid) {
+      updateUserPresence(currentUser.uid, "offline");
+    }
+  });
+  window._presenceListenerAdded = true;
+}
+
 overvåkBruker(async (user) => {
   currentUser = user;
-  
-  if (user) {
+  updateNavForAuth(user);
+  updateUIForAuth(user);
+
+  if (!user) {
+    // Guest: Allow browsing, show login prompt if desired
+    return;
+  }
+
+  try {
+    const banned = await isBanned(user.uid);
+    if (banned) {
+      document.body.innerHTML = "<h1>You're banned, buddy!</h1>";
+      return;  // Stop here
+    }
+
     if (user.emailVerified) {
       showMainPage();
       await updateUserPresence(user.uid, "online");
-      
-      window.addEventListener("beforeunload", () => {
-        updateUserPresence(user.uid, "offline");
-      });
-      
+
       const isAdmin = await getadmin(user.uid);
       if (isAdmin === true) {
         enableAdminFeatures();
         admin = true;
       }
+    } else {
+      // Email not verified: Handle as needed (e.g., show verification prompt)
+      alert("Please verify your email before continuing.");
+      showLogin();  // Or redirect appropriately
     }
-  } else {
-    showLogin();
+  } catch (error) {
+    console.error("Auth check failed:", error);
+    // Fallback: Treat as guest or show error UI
   }
 });
+
+
 
 
 // ============================================
