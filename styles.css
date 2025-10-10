@@ -986,6 +986,168 @@ body {
   font-size: 0.9rem;
 }
 
+/* Bakgrunns-laget */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease;
+}
+
+/* Selve adminpanelet */
+.adminpanel {
+  background: rgba(20, 20, 35, 0.95);
+  border: 1px solid rgba(100, 100, 255, 0.25);
+  border-radius: 12px;
+  padding: 25px;
+  width: 400px;
+  color: #fff;
+  font-family: "Inter", sans-serif;
+  box-shadow: 0 0 20px rgba(100, 100, 255, 0.2);
+  text-align: center;
+  animation: popIn 0.25s ease;
+}
+
+/* Tittel */
+.adminpanel h2 {
+  margin-bottom: 16px;
+  color: #7b7bff;
+  text-shadow: 0 0 8px #7b7bff;
+}
+
+/* Knapper */
+.admin-controls button {
+  background: linear-gradient(90deg, #4b4bff, #7b7bff);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+  margin: 6px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-controls button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(123, 123, 255, 0.6);
+}
+
+.vote {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  user-select: none;
+}
+
+.vote img {
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease;
+  opacity: 0.8;
+}
+
+.vote img:hover {
+  transform: scale(1.15);
+  opacity: 1;
+  filter: brightness(1.2);
+}
+
+.vote img:active {
+  transform: scale(1.05);
+  filter: brightness(0.9);
+}
+
+.vote img.active {
+  background-color: rgba(0,0,0,0.1);
+}
+
+/* Image upload section */
+.image-upload-section {
+  padding: 0 1rem 0.5rem 1rem;
+}
+
+.btn-secondary {
+  background: #ecf0f1;
+  color: #2c3e50;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn-secondary:hover {
+  background: #d5dbdb;
+}
+
+.image-preview {
+  margin-top: 0.5rem;
+  position: relative;
+  display: inline-block;
+}
+
+.image-preview img {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  display: block;
+}
+
+.image-preview .remove-image {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(231, 76, 60, 0.9);
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+
+.image-preview.hidden {
+  display: none;
+}
+
+/* Thread images */
+.thread-image {
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.thread-image:hover {
+  opacity: 0.9;
+}
+
+/* Animasjoner */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+
 /* Highlight animation for thread when clicked from notification */
 @keyframes highlight {
   0% {

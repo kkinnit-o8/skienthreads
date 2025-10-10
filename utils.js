@@ -76,6 +76,14 @@ async function slettDokument(samling, id) {
     }
 }
 
+export async function hentdokument(samling, id) {
+    try {
+        return await (doc(db, samling, id));
+    } catch (error) {
+        console.error("Feil ved sletting:", error);
+    }
+}
+
 // 🔁 Vis alle dokumenter og oppdater automatisk ved endringer
 function visDokumenterLive(samling, visningsfunksjon) {
     onSnapshot(collection(db, samling), (snapshot) => {
@@ -222,19 +230,25 @@ function overvåkTrendingHashtags(callback) {
 // ============================================
 // NOTIFICATION FUNCTIONS
 // ============================================
-
-// Create a notification
-async function createNotification(userId, type, data) {
+// In createNotification function, add 'upvote' as a valid type
+export async function createNotification(userId, type, data) {
   const db = getFirestore();
-  return addDoc(collection(db, "Notifications"), {
-    userId: userId,
-    type: type, // "reply", "like", "mention"
-    threadId: data.threadId,
-    actorName: data.actorName, // Person who triggered the notification
-    content: data.content, // Preview text
-    read: false,
-    createdAt: new Date()
-  });
+  try {
+    // type can be: "reply", "like", "upvote", "mention"
+    const docRef = await addDoc(collection(db, "Notifications"), {
+      userId: userId,
+      type: type,
+      threadId: data.threadId,
+      actorName: data.actorName,
+      content: data.content,
+      read: false,
+      createdAt: new Date()
+    });
+    return docRef;
+  } catch (error) {
+    console.error("Error creating notification:", error);
+    throw error;
+  }
 }
 
 // Mark notification as read
@@ -263,6 +277,18 @@ async function markAllNotificationsRead(userId) {
   await batch.commit();
 }
 
+export async function getadmin(uid){
+  const docRef = doc(db, "users", uid);  // 👈 reference to that one user
+  const snap = await getDoc(docRef);
+
+  if (snap.exists()) {
+    return snap.data().admin; // e.g. "Grenland VGS"
+  } else {
+    return false
+  }
+}
+
+
 // Listen to notifications for a user
 function overvåkNotifications(userId, callback) {
   const db = getFirestore();
@@ -282,11 +308,62 @@ function overvåkNotifications(userId, callback) {
   });
 }
 
+export async function upvoteThread(threadId, userId){
+  const threadRef = doc(db, "Threads", threadId);
 
+  threadRef.upvote.append(userId)
+}
+
+// ============================================
+// VOTE TOGGLE FUNCTION
+// ============================================
+
+export async function toggleVote(threadId, userId, voteType) {
+  const db = getFirestore();
+  const threadRef = doc(db, "Threads", threadId);
   
+  try {
+    const threadDoc = await getDoc(threadRef);
+    if (!threadDoc.exists()) return;
+    
+    const data = threadDoc.data();
+    let upvotes = data.upvotes || [];
+    let downvotes = data.downvotes || [];
+    
+    if (voteType === 'upvote') {
+      // Check if already upvoted
+      if (upvotes.includes(userId)) {
+        // Remove upvote
+        upvotes = upvotes.filter(id => id !== userId);
+      } else {
+        // Add upvote and remove downvote if exists
+        upvotes.push(userId);
+        downvotes = downvotes.filter(id => id !== userId);
+      }
+    } else if (voteType === 'downvote') {
+      // Check if already downvoted
+      if (downvotes.includes(userId)) {
+        // Remove downvote
+        downvotes = downvotes.filter(id => id !== userId);
+      } else {
+        // Add downvote and remove upvote if exists
+        downvotes.push(userId);
+        upvotes = upvotes.filter(id => id !== userId);
+      }
+    }
+    
+    await updateDoc(threadRef, {
+      upvotes: upvotes,
+      downvotes: downvotes
+    });
+    
+  } catch (error) {
+    console.error("Error toggling vote:", error);
+    throw error;
+  }
+}
 
 export {
-  createNotification,
   markNotificationRead,
   markAllNotificationsRead,
   overvåkNotifications,
