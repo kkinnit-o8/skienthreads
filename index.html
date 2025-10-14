@@ -130,6 +130,18 @@
               <div class="user-avatar initials">JD</div>
               <!-- Text input for new thread -->
               <textarea placeholder="Hva tenker du på?" required></textarea>
+              <!-- Add after textarea -->
+              <div id="poll-section" class="poll-section" style="margin-top: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 8px;">
+  <label><input type="checkbox" id="poll-toggle"> Add Poll</label>
+  <div id="poll-form" class="hidden" style="margin-top: 8px;">
+    <input type="text" id="poll-question" placeholder="Poll question?" style="width: 100%; margin-bottom: 8px;">
+    <div id="poll-options">
+      <div class="poll-option"><input type="text" placeholder="Option 1"></div>
+      <div class="poll-option"><input type="text" placeholder="Option 2"></div>
+    </div>
+    <button type="button" id="add-option" class="btn btn-secondary" style="margin-top: 4px;">+ Add Option</button>
+  </div>
+</div>
             </div>
                 <div class="create-thread-actions">
                     <button class="btn btn-primary" id="post-thread-btn" type="submit">Publiser</button>
@@ -142,14 +154,7 @@
       <!-- ============================================ -->
       
       <div id="Threads" class="Threads">
-        <div class="thread-card" data-id="y2n8WD1jzWfQRJq00s78">
-          <div class="thread-header">
-            <div class="user-avatar">R</div>
-            <div class="thread-user-info"><div class="thread-username">realFN</div>
-            <div class="thread-meta">23 timer siden <span class="thread-school-badge">Skogmo VGS</span></div></div></div>
-            <div class="thread-content">tf?</div><div class="thread-actions">
-              <div class="vote"><img src="imgs/upvote.png"><img src="imgs/downvote.png" alt=""></div><button class="action-btn comment">💬 3</button>
-            </div></div>
+        nothing here.....
       </div>
     </div>
 

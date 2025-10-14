@@ -17,17 +17,16 @@ import {
   overvåkNotifications,
   slettDokument,
   getadmin,
-  isBanned
+  isBanned,
+  votePoll
 } from "./utils.js";
 
-
 let sortThreadsBy = "recent";
-let schoolfilter = "Alle skoler"
+let schoolfilter = "Alle skoler";
 let currentHashtag = null;
 let currentUser = null;
 let visibleThreadLimit = 10;
 let admin = false;
-
 
 // ============================================
 // POST THREAD FUNCTIONALITY
@@ -35,54 +34,142 @@ let admin = false;
 
 document.getElementById("post-thread").addEventListener("submit", async (e) => {
   e.preventDefault();
-
   const content = e.target.querySelector("textarea").value;
-  post(content);
-  e.target.reset();
+  const pollToggle = document.getElementById('poll-toggle');
+  console.log('Poll toggle element:', pollToggle);
+  console.log('Poll toggle checked:', pollToggle?.checked);
+  await post(content, e.target);
 });
 
-function post(content, parentId = null){
+async function post(content, formElement, parentId = null) {
   overvåkBruker(async (user) => {
     if (!user) {
-      alert("Du må være logget inn for å poste!");
+      showToast({
+        type: 'error',
+        title: 'Logg inn påkrevd',
+        message: 'Du må være logget inn for å poste!',
+        duration: 3000
+      });
       return;
     }
     if (!content.trim()) {
-      alert("Tråden kan ikke være tom!");
+      showToast({
+        type: 'error',
+        title: 'Tom tråd',
+        message: 'Tråden kan ikke være tom!',
+        duration: 3000
+      });
       return;
     }
 
     const school = await hentSkole(user.uid);
     const hashtags = [...content.matchAll(/#(\w+)/g)].map(match => match[1]);
-    
-    const docRef = await leggTilDokument("Threads", {
-      content: content,
-      authorId: user.uid,
-      authorName: user.displayName || "Anonym",
-      createdAt: new Date(),
-      school: school,
-      upvotes: [],
-      downvotes: [],
-      hashtags: hashtags,
-      parentId: parentId
-    });
-    
-    if (parentId) {
-      const parentThread = currentThreadsData.find(t => t.id === parentId);
-      
-      if (parentThread && parentThread.authorId !== user.uid) {
-        await createNotification(parentThread.authorId, "reply", {
-          threadId: parentId,
-          actorName: user.displayName || "Anonym",
-          content: content
+
+    // Poll logic
+    let pollData = null;
+    const pollToggle = document.getElementById('poll-toggle');
+    console.log('Inside post - Poll toggle checked:', pollToggle?.checked);
+    if (!pollToggle) {
+      console.error('Poll toggle element not found!');
+    } else if (pollToggle.checked) {
+      const question = document.getElementById('poll-question')?.value.trim();
+      const optionInputs = document.querySelectorAll('.poll-option input');
+      const options = Array.from(optionInputs)
+        .map(input => ({
+          text: input.value.trim(),
+          votes: []
+        }))
+        .filter(opt => opt.text);
+
+      console.log('Poll question:', question);
+      console.log('Poll options:', options);
+
+      if (!question) {
+        showToast({
+          type: 'error',
+          title: 'Spørsmål påkrevd',
+          message: 'Pollspørsmål må fylles ut!',
+          duration: 3000
         });
+        return;
       }
+      if (options.length < 2 || options.length > 5) {
+        showToast({
+          type: 'error',
+          title: 'Ugyldig antall valg',
+          message: 'Avstemningen trenger 2–5 ikke-tomme valgmuligheter!',
+          duration: 3000
+        });
+        return;
+      }
+      pollData = { isPoll: true, question, options, votedBy: [] };
     }
-    
-    alert("Postet!");
+
+    try {
+      const threadData = {
+        content: content,
+        authorId: user.uid,
+        authorName: user.displayName || "Anonym",
+        createdAt: new Date(),
+        school: school,
+        upvotes: [],
+        downvotes: [],
+        hashtags: hashtags,
+        parentId: parentId,
+        poll: pollData
+      };
+      console.log('Data sent to leggTilDokument:', threadData);
+      const docRef = await leggTilDokument("Threads", threadData);
+
+      if (parentId) {
+        const parentThread = currentThreadsData.find(t => t.id === parentId);
+        if (parentThread && parentThread.authorId !== user.uid) {
+          await createNotification(parentThread.authorId, "reply", {
+            threadId: parentId,
+            actorName: user.displayName || "Anonym",
+            content: content
+          });
+        }
+      }
+
+      // Reset the form after successful post
+      if (formElement) {
+        formElement.reset();
+        const pollForm = document.getElementById('poll-form');
+        if (pollForm) {
+          pollForm.classList.add('hidden');
+          const pollQuestion = document.getElementById('poll-question');
+          pollQuestion.value = '';
+          pollQuestion.removeAttribute('required');
+          const pollOptionsContainer = document.getElementById('poll-options');
+          pollOptionsContainer.innerHTML = `
+            <div class="poll-option"><input type="text" placeholder="Option 1"></div>
+            <div class="poll-option"><input type="text" placeholder="Option 2"></div>
+          `;
+          // Ensure no required attributes remain on poll options
+          pollOptionsContainer.querySelectorAll('input').forEach(input => input.removeAttribute('required'));
+          // Uncheck poll toggle
+          pollToggle.checked = false;
+        }
+      }
+
+      showToast({
+        type: 'success',
+        title: 'Suksess',
+        message: 'Tråden ble postet!',
+        duration: 3000
+      });
+    } catch (error) {
+      console.error("Error posting thread:", error);
+      showToast({
+        type: 'error',
+        title: 'Feil ved posting',
+        message: `Feil ved posting: ${error.message}`,
+        duration: 5000
+      });
+    }
   });
 }
-
 
 // ============================================
 // UTILITY FUNCTIONS
@@ -117,7 +204,6 @@ function getInitials(name) {
     .toUpperCase();
 }
 
-
 // ============================================
 // UPVOTE/DOWNVOTE FUNCTIONALITY
 // ============================================
@@ -125,7 +211,12 @@ function getInitials(name) {
 function upvoteThread(threadId) {
   overvåkBruker(async (user) => {
     if (!user) {
-      alert("Du må være logget inn for å stemme!");
+      showToast({
+        type: 'error',
+        title: 'Logg inn påkrevd',
+        message: 'Du må være logget inn for å stemme!',
+        duration: 3000
+      });
       return;
     }
 
@@ -149,7 +240,12 @@ function upvoteThread(threadId) {
 function downvoteThread(threadId) {
   overvåkBruker(async (user) => {
     if (!user) {
-      alert("Du må være logget inn for å stemme!");
+      showToast({
+        type: 'error',
+        title: 'Logg inn påkrevd',
+        message: 'Du må være logget inn for å stemme!',
+        duration: 3000
+      });
       return;
     }
 
@@ -157,6 +253,38 @@ function downvoteThread(threadId) {
   });
 }
 
+// ============================================
+// POLL VOTING
+// ============================================
+
+async function voteOnPoll(threadId, userId, optionIndex) {
+  if (!userId) {
+    showToast({
+      type: 'error',
+      title: 'Logg inn påkrevd',
+      message: 'Du må være logget inn for å stemme!',
+      duration: 3000
+    });
+    return;
+  }
+  try {
+    await votePoll(threadId, userId, optionIndex);
+    showToast({
+      type: 'success',
+      title: 'Stemme registrert',
+      message: 'Din stemme ble registrert!',
+      duration: 3000
+    });
+  } catch (error) {
+    console.error("Error voting on poll:", error);
+    showToast({
+      type: 'error',
+      title: 'Feil ved avstemning',
+      message: `Feil ved avstemning: ${error.message}`,
+      duration: 5000
+    });
+  }
+}
 
 // ============================================
 // THREAD DISPLAY & SORTING
@@ -166,9 +294,12 @@ let currentThreadsData = [];
 
 function visTråderLive() {
   const container = document.getElementById("Threads");
-
+  container.innerHTML = "";
   visDokumenterLive("Threads", (docs) => {
-    if (!Array.isArray(docs)) return;
+    if (!Array.isArray(docs)) {
+      console.error("Invalid data from visDokumenterLive:", docs);
+      return;
+    }
 
     currentThreadsData = docs;
     applySorting(schoolfilter, currentUser, container);
@@ -300,9 +431,58 @@ function updateThreadContent(threadEl, data, activeUser, commentCount) {
     commentBtn.textContent = `💬 ${commentCount || 0}`;
   }
 
+  // Update poll display if poll exists
+  const pollDiv = threadEl.querySelector('.poll-container');
+  if (pollDiv && data.poll && data.poll.question && Array.isArray(data.poll.options)) {
+    const optionsList = pollDiv.querySelector('.poll-options');
+    optionsList.innerHTML = ''; // Clear existing options
+
+    const totalVotes = data.poll.options.reduce((sum, opt) => sum + (opt.votes?.length || 0), 0);
+    const hasVoted = activeUser && data.poll.votedBy?.includes(activeUser.uid) || false;
+
+    data.poll.options.forEach((option, index) => {
+      const optDiv = document.createElement('div');
+      optDiv.style.position = 'relative';
+      optDiv.style.padding = '8px';
+      optDiv.style.borderRadius = '6px';
+      optDiv.style.background = hasVoted ? 'var(--surface)' : 'transparent';
+      optDiv.style.cursor = hasVoted ? 'default' : 'pointer';
+      optDiv.style.transition = 'background 0.2s';
+
+      if (hasVoted) {
+        const percent = totalVotes > 0 ? Math.round((option.votes?.length || 0) / totalVotes * 100) : 0;
+        const bar = document.createElement('div');
+        bar.style.height = '4px';
+        bar.style.background = `linear-gradient(to right, var(--success) ${percent}%, var(--border) ${percent}%)`;
+        bar.style.borderRadius = '2px';
+        bar.style.marginBottom = '4px';
+
+        const text = document.createElement('div');
+        text.innerHTML = `<strong>${option.text || 'Option ' + (index + 1)}</strong> (${option.votes?.length || 0} votes - ${percent}%)`;
+
+        optDiv.appendChild(bar);
+        optDiv.appendChild(text);
+      } else {
+        optDiv.textContent = option.text || 'Option ' + (index + 1);
+        optDiv.style.border = '1px solid var(--border)';
+        optDiv.style.display = 'flex';
+        optDiv.style.alignItems = 'center';
+        optDiv.style.justifyContent = 'center';
+        if (activeUser) {
+          optDiv.addEventListener('click', async () => {
+            await voteOnPoll(data.id, activeUser.uid, index);
+            optDiv.style.background = 'var(--success)';
+            setTimeout(() => optDiv.style.background = 'var(--surface)', 300);
+          });
+        }
+      }
+
+      optionsList.appendChild(optDiv);
+    });
+  }
+
   threadEl._threadData = data;
 }
-
 
 // ============================================
 // CREATE THREAD ELEMENT
@@ -347,6 +527,74 @@ function getThread(data, activeUser, container, commentcount) {
   contentEl.classList.add("thread-content");
   contentEl.textContent = String(data.content || "");
 
+  if (data.poll && data.poll.question && Array.isArray(data.poll.options)) {
+    const pollDiv = document.createElement('div');
+    pollDiv.classList.add('poll-container');
+    pollDiv.style.marginBottom = '16px';
+    pollDiv.style.padding = '12px';
+    pollDiv.style.border = '1px solid var(--border)';
+    pollDiv.style.borderRadius = '8px';
+    pollDiv.style.background = 'var(--background)';
+
+    const question = document.createElement('div');
+    question.textContent = data.poll.question;
+    question.style.fontWeight = '600';
+    question.style.marginBottom = '8px';
+
+    const optionsList = document.createElement('div');
+    optionsList.classList.add('poll-options');
+    optionsList.style.display = 'flex';
+    optionsList.style.flexDirection = 'column';
+    optionsList.style.gap = '8px';
+
+    const totalVotes = data.poll.options.reduce((sum, opt) => sum + (opt.votes?.length || 0), 0);
+    const hasVoted = activeUser && data.poll.votedBy?.includes(activeUser.uid) || false;
+
+    data.poll.options.forEach((option, index) => {
+      const optDiv = document.createElement('div');
+      optDiv.style.position = 'relative';
+      optDiv.style.padding = '8px';
+      optDiv.style.borderRadius = '6px';
+      optDiv.style.background = hasVoted ? 'var(--surface)' : 'transparent';
+      optDiv.style.cursor = hasVoted ? 'default' : 'pointer';
+      optDiv.style.transition = 'background 0.2s';
+
+      if (hasVoted) {
+        const percent = totalVotes > 0 ? Math.round((option.votes?.length || 0) / totalVotes * 100) : 0;
+        const bar = document.createElement('div');
+        bar.style.height = '4px';
+        bar.style.background = `linear-gradient(to right, var(--success) ${percent}%, var(--border) ${percent}%)`;
+        bar.style.borderRadius = '2px';
+        bar.style.marginBottom = '4px';
+
+        const text = document.createElement('div');
+        text.innerHTML = `<strong>${option.text || 'Option ' + (index + 1)}</strong> (${option.votes?.length || 0} votes - ${percent}%)`;
+
+        optDiv.appendChild(bar);
+        optDiv.appendChild(text);
+      } else {
+        optDiv.textContent = option.text || 'Option ' + (index + 1);
+        optDiv.style.border = '1px solid var(--border)';
+        optDiv.style.display = 'flex';
+        optDiv.style.alignItems = 'center';
+        optDiv.style.justifyContent = 'center';
+        if (activeUser) {
+          optDiv.addEventListener('click', async () => {
+            await voteOnPoll(data.id, activeUser.uid, index);
+            optDiv.style.background = 'var(--success)';
+            setTimeout(() => optDiv.style.background = 'var(--surface)', 300);
+          });
+        }
+      }
+
+      optionsList.appendChild(optDiv);
+    });
+
+    pollDiv.appendChild(question);
+    pollDiv.appendChild(optionsList);
+    contentEl.appendChild(pollDiv);
+  }
+
   const actions = document.createElement("div");
   actions.classList.add("thread-actions");
 
@@ -369,8 +617,6 @@ function getThread(data, activeUser, container, commentcount) {
 
   upvote.style.opacity = userUpvoted ? "1" : "0.5";
 
-  // toggle both downvote and upvote button with adding .active if they are pressed
-
   const scoreDisplay = document.createElement("span");
   scoreDisplay.classList.add("vote-score");
   scoreDisplay.textContent = score > 0 ? `+${score}` : score.toString();
@@ -391,12 +637,22 @@ function getThread(data, activeUser, container, commentcount) {
   vote.appendChild(downvote);
 
   upvote.addEventListener("click", () => {
-    if (!currentUser) return alert("Du må være logget inn for å stemme!");
+    if (!currentUser) return showToast({
+      type: 'error',
+      title: 'Logg inn påkrevd',
+      message: 'Du må være logget inn for å stemme!',
+      duration: 3000
+    });
     upvoteThread(data.id);
   });
 
   downvote.addEventListener("click", () => {
-    if (!currentUser) return alert("Du må være logget inn for å stemme!");
+    if (!currentUser) return showToast({
+      type: 'error',
+      title: 'Logg inn påkrevd',
+      message: 'Du må være logget inn for å stemme!',
+      duration: 3000
+    });
     downvoteThread(data.id);
   });
 
@@ -405,7 +661,12 @@ function getThread(data, activeUser, container, commentcount) {
   commentBtn.textContent = `💬 ${commentcount || 0}`;
 
   commentBtn.addEventListener("click", () => {
-    if (!currentUser) return alert("Du må være logget inn for å kommentere!");
+    if (!currentUser) return showToast({
+      type: 'error',
+      title: 'Logg inn påkrevd',
+      message: 'Du må være logget inn for å kommentere!',
+      duration: 3000
+    });
     togglecommentsection(data.id, currentUser, postEl);
   });
 
@@ -437,7 +698,12 @@ function getThread(data, activeUser, container, commentcount) {
           createdAt: new Date(),
           status: "pending"
         });
-        alert("Rapportert!");
+        showToast({
+          type: 'success',
+          title: 'Rapportert',
+          message: 'Tråden ble rapportert!',
+          duration: 3000
+        });
       }
     });
 
@@ -453,7 +719,6 @@ function getThread(data, activeUser, container, commentcount) {
 
   return postEl;
 }
-
 
 // ============================================
 // COMMENTS FUNCTIONALITY
@@ -500,7 +765,7 @@ function togglecommentsection(threadId, user, container, isNested = false) {
   submitBtn.type = "submit";
   submitBtn.textContent = "Kommenter";
 
-  formActions.appendChild(submitBtn);
+  formActions.appendChild(subBtn);
   form.appendChild(inputContainer);
   form.appendChild(formActions);
 
@@ -522,7 +787,7 @@ function togglecommentsection(threadId, user, container, isNested = false) {
     const content = textarea.value.trim();
     if (!content) return;
 
-    await post(content, threadId);
+    await post(content, null, threadId);
     textarea.value = "";
   });
 }
@@ -687,12 +952,22 @@ function createCommentCard(comment, isNested, user) {
   vote.appendChild(downvote);
 
   upvote.addEventListener("click", () => {
-    if (!currentUser) return alert("Du må være logget inn for å stemme!");
+    if (!currentUser) return showToast({
+      type: 'error',
+      title: 'Logg inn påkrevd',
+      message: 'Du må være logget inn for å stemme!',
+      duration: 3000
+    });
     upvoteThread(comment.id);
   });
 
   downvote.addEventListener("click", () => {
-    if (!currentUser) return alert("Du må være logget inn for å stemme!");
+    if (!currentUser) return showToast({
+      type: 'error',
+      title: 'Logg inn påkrevd',
+      message: 'Du må være logget inn for å stemme!',
+      duration: 3000
+    });
     downvoteThread(comment.id);
   });
 
@@ -701,7 +976,12 @@ function createCommentCard(comment, isNested, user) {
   replyBtn.textContent = "💬 Svar";
 
   replyBtn.addEventListener("click", () => {
-    if (!currentUser) return alert("Du må være logget inn for å svare!");
+    if (!currentUser) return showToast({
+      type: 'error',
+      title: 'Logg inn påkrevd',
+      message: 'Du må være logget inn for å svare!',
+      duration: 3000
+    });
     togglecommentsection(comment.id, currentUser, card, true);
   });
 
@@ -722,7 +1002,6 @@ function createCommentCard(comment, isNested, user) {
   return card;
 }
 
-
 // ============================================
 // AUTH FORMS
 // ============================================
@@ -737,9 +1016,19 @@ document.getElementById("register-form").addEventListener("submit", async (e) =>
 
   try {
     await registrerBruker(email, pass, name, school);
-    alert("Bruker opprettet, sjekk skole-eposten din!");
+    showToast({
+      type: 'success',
+      title: 'Registrering vellykket',
+      message: 'Bruker opprettet, sjekk skole-eposten din!',
+      duration: 3000
+    });
   } catch (err) {
-    alert("Feil: " + err.message);
+    showToast({
+      type: 'error',
+      title: 'Registreringsfeil',
+      message: `Feil: ${err.message}`,
+      duration: 5000
+    });
   }
 });
 
@@ -751,13 +1040,23 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
   
   try {
     await loggInn(email, pass);
-    alert("Logget inn!");
+    showToast({
+      type: 'success',
+      title: 'Innlogging vellykket',
+      message: 'Du er nå logget inn!',
+      duration: 3000
+    });
     showMainPage();
+    sjekk();
   } catch (err) {
-    alert("Feil: " + err.message);
+    showToast({
+      type: 'error',
+      title: 'Innloggingsfeil',
+      message: `Feil: ${err.message}`,
+      duration: 5000
+    });
   }
 });
-
 
 // ============================================
 // SCREEN NAVIGATION
@@ -794,7 +1093,6 @@ document.querySelector(".profile-btn").addEventListener("click", () => {
     showLogin();
   }
 });
-
 
 // ============================================
 // USER PRESENCE & STATS
@@ -840,8 +1138,8 @@ overvåkTrendingHashtags((trending) => {
   const oldItems = trendingContainer.querySelectorAll(".trending-item");
   oldItems.forEach(el => el.remove());
 
-  trending.sort((a,b) => a[1]>b[1])
-  trending = trending.slice(0,4)
+  trending.sort((a,b) => b[1] - a[1]);
+  trending = trending.slice(0,4);
 
   trending.forEach(([tag, count]) => {
     const item = document.createElement("div");
@@ -880,8 +1178,6 @@ overvåkTrendingHashtags((trending) => {
   });
 });
 
-
-
 // ============================================
 // FEED CONTROLS
 // ============================================
@@ -904,7 +1200,6 @@ document.getElementById("schoolFilter").addEventListener("change", (e) => {
   schoolfilter = e.target.value;
   applySorting(schoolfilter, currentUser, document.getElementById("Threads"));
 });
-
 
 // ============================================
 // NOTIFICATION SYSTEM
@@ -1041,7 +1336,6 @@ function updateNotificationBadge(notifications) {
   }
 }
 
-
 // ============================================
 // ADMIN PANEL
 // ============================================
@@ -1139,6 +1433,16 @@ function showAdminPanel() {
       const actionsDiv = document.createElement("div");
       actionsDiv.style.marginTop = "10px";
 
+      const Ignorebtn = document.createElement("button");
+      Ignorebtn.textContent = "Ignore report";
+      Ignorebtn.style.marginRight = "5px";
+      Ignorebtn.addEventListener("click", async () => {
+        if (confirm("ignore this report?")) {
+          await slettDokument("reports", report.id);
+          entry.remove();
+        }
+      });
+
       const deleteBtn = document.createElement("button");
       deleteBtn.textContent = "Delete Post";
       deleteBtn.style.marginRight = "5px";
@@ -1168,6 +1472,7 @@ function showAdminPanel() {
 
       actionsDiv.appendChild(deleteBtn);
       actionsDiv.appendChild(banBtn);
+      actionsDiv.appendChild(Ignorebtn);
 
       entry.appendChild(threadContent);
       entry.appendChild(reporterInfo);
@@ -1188,6 +1493,7 @@ function enableAdminFeatures() {
   const navbar = document.getElementById("navbar");
   
   const adminBtn = document.createElement("button");
+  adminBtn.id = "adminBtn";
   adminBtn.textContent = "adminpanel";
   adminBtn.classList.add("tab-btn");
   adminBtn.style.color = "blue";
@@ -1197,6 +1503,87 @@ function enableAdminFeatures() {
   navbar.appendChild(adminBtn);
 }
 
+function unableadminFeatures() {
+  const title = document.getElementById("logo");
+  title.textContent = "SkienThreads";
+
+  const navbar = document.getElementById("navbar");
+  const adminBtn = document.getElementById("adminBtn");
+  
+  if (adminBtn) {
+    navbar.removeChild(adminBtn);
+  }
+}
+
+// ============================================
+// TOAST
+// ============================================
+
+function initToastContainer() {
+  if (!document.querySelector('.toast-container')) {
+    const container = document.createElement('div');
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+}
+
+function showToast(options) {
+  initToastContainer();
+  
+  const defaults = {
+    type: 'info',
+    title: '',
+    message: '',
+    duration: 3000,
+    closable: true,
+    showProgress: true
+  };
+  
+  const config = { ...defaults, ...options };
+  
+  const toast = document.createElement('div');
+  toast.className = `toast ${config.type}`;
+  
+  const icons = {
+    success: '✓',
+    error: '✕',
+    warning: '⚠',
+    info: 'ℹ'
+  };
+  
+  toast.innerHTML = `
+    <div class="toast-icon">${icons[config.type]}</div>
+    <div class="toast-content">
+      ${config.title ? `<div class="toast-title">${config.title}</div>` : ''}
+      ${config.message ? `<div class="toast-message">${config.message}</div>` : ''}
+    </div>
+    ${config.closable ? '<button class="toast-close">×</button>' : ''}
+    ${config.showProgress ? '<div class="toast-progress"></div>' : ''}
+  `;
+  
+  const container = document.querySelector('.toast-container');
+  container.appendChild(toast);
+  
+  if (config.closable) {
+    const closeBtn = toast.querySelector('.toast-close');
+    closeBtn.addEventListener('click', () => removeToast(toast));
+  }
+  
+  if (config.duration > 0) {
+    setTimeout(() => removeToast(toast), config.duration);
+  }
+  
+  return toast;
+}
+
+function removeToast(toast) {
+  toast.classList.add('removing');
+  setTimeout(() => {
+    if (toast.parentElement) {
+      toast.parentElement.removeChild(toast);
+    }
+  }, 300);
+}
 
 // ============================================
 // AUTH STATE MONITORING
@@ -1204,16 +1591,74 @@ function enableAdminFeatures() {
 
 window.addEventListener("DOMContentLoaded", () => {
   showMainPage();
+
+  const pollToggle = document.getElementById('poll-toggle');
+  if (pollToggle) {
+    pollToggle.addEventListener('change', (e) => {
+      const pollForm = document.getElementById('poll-form');
+      const pollQuestion = document.getElementById('poll-question');
+      const pollOptions = document.querySelectorAll('#poll-options input');
+      
+      pollForm.classList.toggle('hidden', !e.target.checked);
+      
+      if (e.target.checked) {
+        pollQuestion.setAttribute('required', '');
+        pollOptions.forEach(input => input.setAttribute('required', ''));
+      } else {
+        pollQuestion.removeAttribute('required');
+        pollOptions.forEach(input => input.removeAttribute('required'));
+        pollQuestion.value = '';
+        const optionsContainer = document.getElementById('poll-options');
+        optionsContainer.innerHTML = `
+          <div class="poll-option"><input type="text" placeholder="Option 1"></div>
+          <div class="poll-option"><input type="text" placeholder="Option 2"></div>
+        `;
+      }
+    });
+  }
+
+  const addOptionBtn = document.getElementById('add-option');
+  if (addOptionBtn) {
+    addOptionBtn.addEventListener('click', () => {
+      const container = document.getElementById('poll-options');
+      if (container.children.length >= 5) {
+        showToast({
+          type: 'error',
+          title: 'Maksimum antall valg',
+          message: 'Maksimalt 5 valgmuligheter tillatt i avstemningen!',
+          duration: 3000
+        });
+        return;
+      }
+      const div = document.createElement('div');
+      div.className = 'poll-option';
+      div.innerHTML = `
+        <input type="text" placeholder="Option ${container.children.length + 1}" required>
+        <button type="button" class="remove-option btn btn-secondary" style="margin-left: 8px;">Remove</button>
+      `;
+      container.appendChild(div);
+      div.querySelector('.remove-option').addEventListener('click', () => {
+        if (container.children.length <= 2) {
+          showToast({
+            type: 'error',
+            title: 'Minimum antall valg',
+            message: 'Avstemningen må ha minst 2 valgmuligheter!',
+            duration: 3000
+          });
+          return;
+        }
+        div.remove();
+      });
+    });
+  }
 });
 
-// 2. Replace profile icon with "Logg inn" button if not logged in
 function updateNavForAuth(user) {
   const navActions = document.querySelector(".nav-actions");
   let profileBtn = navActions.querySelector(".profile-btn");
   let loginBtn = navActions.querySelector(".login-btn");
 
   if (user) {
-    // Show profile button, hide login button
     if (!profileBtn) {
       profileBtn = document.createElement("button");
       profileBtn.className = "profile-btn initials";
@@ -1228,7 +1673,6 @@ function updateNavForAuth(user) {
       }
     };
   } else {
-    // Show login button, hide profile button
     if (!loginBtn) {
       loginBtn = document.createElement("button");
       loginBtn.className = "btn btn-primary login-btn";
@@ -1240,21 +1684,15 @@ function updateNavForAuth(user) {
   }
 }
 
-// 3. Hide features that require login
 function updateUIForAuth(user) {
-  // Hide post thread box if not logged in
   const postThreadForm = document.getElementById("post-thread");
   if (postThreadForm) {
     postThreadForm.style.display = user ? "" : "none";
   }
-  // Hide notification bell if not logged in
   const notifBtn = document.getElementById("notificationBtn");
   if (notifBtn) notifBtn.style.display = user ? "" : "none";
 }
 
-// ...existing code...
-
-// Add this once on page load (e.g., in DOMContentLoaded) to handle offline only once
 if (!window._presenceListenerAdded) {
   window.addEventListener("beforeunload", () => {
     if (currentUser?.uid) {
@@ -1264,48 +1702,60 @@ if (!window._presenceListenerAdded) {
   window._presenceListenerAdded = true;
 }
 
-overvåkBruker(async (user) => {
-  currentUser = user;
-  updateNavForAuth(user);
-  updateUIForAuth(user);
+function sjekk() {
+  overvåkBruker(async (user) => {
+    currentUser = user;
+    updateNavForAuth(user);
+    updateUIForAuth(user);
 
-  if (!user) {
-    // Guest: Allow browsing, show login prompt if desired
-    return;
-  }
-
-  try {
-    const banned = await isBanned(user.uid);
-    if (banned) {
-      document.body.innerHTML = "<h1>You're banned, buddy!</h1>";
-      return;  // Stop here
+    if (!user) {
+      admin = false;
+      unableadminFeatures();
+      return;
     }
 
-    if (user.emailVerified) {
-      showMainPage();
-      await updateUserPresence(user.uid, "online");
-
-      const isAdmin = await getadmin(user.uid);
-      if (isAdmin === true) {
-        enableAdminFeatures();
-        admin = true;
+    try {
+      const banned = await isBanned(user.uid);
+      if (banned) {
+        document.body.innerHTML = "<h1>You're banned, buddy!</h1>";
+        return;
       }
-    } else {
-      // Email not verified: Handle as needed (e.g., show verification prompt)
-      alert("Please verify your email before continuing.");
-      showLogin();  // Or redirect appropriately
+
+      if (user.emailVerified) {
+        showMainPage();
+        await updateUserPresence(user.uid, "online");
+
+        const isAdmin = await getadmin(user.uid);
+        if (isAdmin === true) {
+          enableAdminFeatures();
+          admin = true;
+        } else {
+          admin = false;
+          unableadminFeatures();
+        }
+      } else {
+        showToast({
+          type: 'warning',
+          title: 'E-postbekreftelse nødvendig',
+          message: 'Vennligst bekreft e-posten din før du fortsetter.',
+          duration: 5000
+        });
+        admin = false;
+        unableadminFeatures();
+        showLogin();
+      }
+      visTråderLive();
+
+    } catch (error) {
+      console.error("Auth check failed:", error);
+      admin = false;
+      unableadminFeatures();
     }
-  } catch (error) {
-    console.error("Auth check failed:", error);
-    // Fallback: Treat as guest or show error UI
-  }
-});
-
-
-
+  });
+}
 
 // ============================================
 // INITIALIZE
 // ============================================
 
-visTråderLive();
+sjekk();

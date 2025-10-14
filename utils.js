@@ -230,7 +230,6 @@ function overvåkTrendingHashtags(callback) {
 // ============================================
 // NOTIFICATION FUNCTIONS
 // ============================================
-// In createNotification function, add 'upvote' as a valid type
 export async function createNotification(userId, type, data) {
   const db = getFirestore();
   try {
@@ -366,6 +365,46 @@ export async function toggleVote(threadId, userId, voteType) {
 export async function isBanned(userId) {
   const bans = await hentDokumenter("bans");
   return bans.some(ban => ban.userId === userId);
+}
+
+export async function votePoll(threadId, userId, optionIndex) {
+  try {
+    const threadRef = doc(db, "Threads", threadId);
+    const threadSnap = await getDoc(threadRef);
+
+    if (!threadSnap.exists()) {
+      throw new Error("Thread not found");
+    }
+
+    const threadData = threadSnap.data();
+    if (!threadData.poll || !threadData.poll.isPoll) {
+      throw new Error("No poll found for this thread");
+    }
+
+    if (threadData.poll.votedBy.includes(userId)) {
+      throw new Error("User has already voted");
+    }
+
+    // Create a new options array with the user's vote
+    const updatedOptions = threadData.poll.options.map((option, index) => {
+      if (index === optionIndex) {
+        return {
+          ...option,
+          votes: [...(option.votes || []), userId]
+        };
+      }
+      return option;
+    });
+
+    // Update the poll with the new vote and add user to votedBy
+    await updateDoc(threadRef, {
+      "poll.options": updatedOptions,
+      "poll.votedBy": [...threadData.poll.votedBy, userId]
+    });
+  } catch (error) {
+    console.error("Error in votePoll:", error);
+    throw error;
+  }
 }
 
 export {
