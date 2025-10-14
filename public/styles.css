@@ -1658,11 +1658,6 @@ body {
   background: var(--surface);
 }
 
-/* Progress Bar in Poll Results */
-.poll-options > div > div[style*="height: 6px"] {
-  /* Styling is handled inline in JavaScript */
-}
-
 /* Progress Bar Fill Animation */
 .poll-options > div > div > div {
   animation: progressSlide 0.6s ease;
