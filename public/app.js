@@ -1550,7 +1550,6 @@ async function sjekk() {
            notificationUnsubscribe();
            notificationUnsubscribe = null;
          }
-         showLogin();
          return;
        }
 
@@ -1590,7 +1589,6 @@ async function sjekk() {
            });
            admin = false;
            disableAdminFeatures();
-           showLogin();
          }
        } catch (error) {
          console.error("Auth check failed:", error);
