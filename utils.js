@@ -61,7 +61,6 @@ async function hentDokumenter(samling) {
 async function leggTilDokument(samling, data) {
     try {
         await addDoc(collection(db, samling), data);
-        console.log("Dokument lagt til.");
     } catch (error) {
         console.error("Feil ved lagring:", error);
     }
@@ -70,7 +69,6 @@ async function leggTilDokument(samling, data) {
 async function slettDokument(samling, id) {
     try {
         await deleteDoc(doc(db, samling, id));
-        console.log("Dokument slettet.");
     } catch (error) {
         console.error("Feil ved sletting:", error);
     }
