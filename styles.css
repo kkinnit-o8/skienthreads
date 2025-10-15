@@ -379,6 +379,49 @@ body {
 }
 
 /* Profile button (circular with initials) - fixed size to prevent stretch */
+
+/* Profile dropdown */
+.profile-wrapper { position: relative; }
+.profile-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 160px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  padding: 8px 6px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.profile-menu.hidden { display: none !important; }
+.profile-menu-item {
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-weight: 600;
+  transition: background 0.15s, transform 0.08s;
+}
+.profile-menu-item:hover,
+.profile-menu-item:focus {
+  background: var(--primary-light);
+  transform: translateY(-1px);
+  outline: none;
+}
+.profile-menu-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 6px;
+  border-radius: 2px;
+}
+
 .profile-btn {
   width: 40px;
   height: 40px;

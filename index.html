@@ -90,7 +90,7 @@
         <button class="tab-btn active" id="nylig">Nylig</button>
         <button class="tab-btn" id="popular">Populært</button>
       </div>
-
+      
       <!-- Right side actions -->
       <div class="nav-actions">
         <!-- School filter dropdown -->
@@ -102,16 +102,24 @@
         </select>
         
         <!-- Notification bell button -->
-        <button class="notification-btn" id="notificationBtn">
+        <button class="notification-btn" id="notificationBtn" aria-label="Varsler">
           🔔
           <span class="notification-badge hidden" id="notificationBadge">0</span>
         </button>
         
-        <!-- User profile button (shows initials) -->
-        <button class="profile-btn initials">xx</button>
+        <!-- User profile button (shows initials) + dropdown -->
+        <div class="profile-wrapper">
+          <button id="profileBtn" class="profile-btn initials" aria-haspopup="true" aria-expanded="false">xx</button>
+          <div id="profileMenu" class="profile-menu hidden" role="menu" aria-labelledby="profileBtn">
+            <button class="profile-menu-item" role="menuitem" data-action="profile" disabled><s>Min profil (kommmer senere)</s></button>
+            <button class="profile-menu-item" role="menuitem" data-action="settings" disabled><s>Innstillinger (kommer senere)</s></button>
+            <div class="profile-menu-sep" aria-hidden="true"></div>
+            <button class="profile-menu-item" id="log" role="menuitem" data-action="loggut()">Logg ut</button>
+          </div>
+        </div>
       </div>
     </div>
-    
+
     <!-- Notification dropdown panel -->
     <div class="notification-panel hidden" id="notificationPanel">
       <div class="notification-header">
@@ -223,7 +231,6 @@
 
   <!-- ============================================ -->
   <!-- FOOTER -->
-  <!-- Kommer ikke opp er det noe jeg(Volkan) gjorde? -->
 <footer class="footer" id="footer">
   <div class="footer-content">
     <div class="footer-contact">
