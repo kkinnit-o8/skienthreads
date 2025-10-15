@@ -221,6 +221,10 @@ async function upvoteThread(threadId) {
       message: "Du må være logget inn for å stemme!",
       duration: 3000
     });
+    const threadEl = document.querySelector(`[data-id="${threadId}"]`);
+if (threadEl) {
+  threadEl.scrollIntoView({ behavior: "smooth", block: "center" });
+}
     return;
   }
 
@@ -257,6 +261,10 @@ async function downvoteThread(threadId) {
       message: "Du må være logget inn for å stemme!",
       duration: 3000
     });
+    const threadEl = document.querySelector(`[data-id="${threadId}"]`);
+if (threadEl) {
+  threadEl.scrollIntoView({ behavior: "smooth", block: "center" });
+}
     return;
   }
 
@@ -291,6 +299,17 @@ async function voteOnPoll(threadId, userId, optionIndex) {
       message: "Din stemme ble registrert!",
       duration: 3000
     });
+
+    // Find the thread element and update its content
+    const threadEl = document.querySelector(`[data-id="${threadId}"]`);
+    if (threadEl) {
+      const threadData = currentThreadsData.find(t => t.id === threadId);
+      if (threadData) {
+        const commentCount = currentThreadsData.filter(d => d.parentId === threadId).length;
+        updateThreadContent(threadEl, threadData, currentUser, commentCount);
+        threadEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
   } catch (error) {
     console.error("Error voting on poll:", error);
     showToast({
@@ -328,18 +347,18 @@ function applySorting(selectedSchool, user, container) {
     baseFiltered = baseFiltered.filter(thread => thread?.school === selectedSchool);
   }
 
-  const sortFn = (a, b) => {
-    if (sortThreadsBy === "recent") {
-      const aMillis = a?.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt).getTime();
-      const bMillis = b?.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt).getTime();
-      return bMillis - aMillis;
-    } else if (sortThreadsBy === "popular") {
-      const aScore = (a.upvotes?.length || 0) - (a.downvotes?.length || 0);
-      const bScore = (b.upvotes?.length || 0) - (b.downvotes?.length || 0);
-      return bScore - aScore;
-    }
-    return 0;
-  };
+ const sortFn = (a, b) => {
+  if (sortThreadsBy === "recent") {
+    const aMillis = a?.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt).getTime();
+    const bMillis = b?.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt).getTime();
+    return bMillis - aMillis;
+  } else if (sortThreadsBy === "popular") {
+    const aScore = (a.upvotes?.length || 0) - (a.downvotes?.length || 0);
+    const bScore = (b.upvotes?.length || 0) - (b.downvotes?.length || 0);
+    return bScore - aScore; // Fixed from bScore - bScore
+  }
+  return 0;
+};
 
   let filteredDocs = currentHashtag
     ? [
@@ -354,6 +373,10 @@ function applySorting(selectedSchool, user, container) {
     if (threadId) existingThreads.set(threadId, threadEl);
   });
 
+  // Keep track of threads to retain
+  const threadsToShow = new Set(filteredDocs.slice(0, visibleThreadLimit).map(d => d.id));
+
+  // Update or add threads within visible limit
   filteredDocs.slice(0, visibleThreadLimit).forEach((data, index) => {
     const commentCount = currentThreadsData.filter(d => d.parentId === data.id).length;
     const existingThread = existingThreads.get(data.id);
@@ -379,7 +402,12 @@ function applySorting(selectedSchool, user, container) {
     }
   });
 
-  existingThreads.forEach(threadEl => threadEl.remove());
+  // Only remove threads that are no longer in the visible set
+  existingThreads.forEach((threadEl, threadId) => {
+    if (!threadsToShow.has(threadId)) {
+      threadEl.remove();
+    }
+  });
 
   const oldButton = container.querySelector(".load-more-btn");
   if (oldButton) oldButton.remove();
@@ -399,6 +427,95 @@ function applySorting(selectedSchool, user, container) {
 }
 
 function updateThreadContent(threadEl, data, activeUser, commentCount) {
+  // Helper to render content and poll
+  function renderContentAndPoll(contentEl, data, activeUser, isTruncated = true) {
+    contentEl.innerHTML = "";
+    const textDiv = document.createElement("div");
+    textDiv.classList.add("thread-text");
+    const fullText = data.content || "";
+    let displayText = fullText;
+    if (isTruncated && fullText.length > 200) {
+      displayText = fullText.substring(0, 200) + "...";
+      textDiv.classList.add("truncated");
+      const seeMore = document.createElement("span");
+      seeMore.classList.add("see-more");
+      seeMore.textContent = "Se mer...";
+      seeMore.addEventListener("click", () => {
+        renderContentAndPoll(contentEl, data, activeUser, false); // Re-render full text and poll
+      });
+      textDiv.appendChild(document.createTextNode(displayText));
+      textDiv.appendChild(seeMore);
+    } else {
+      textDiv.textContent = displayText;
+    }
+    contentEl.appendChild(textDiv);
+
+    // Render poll
+    if (data.poll?.question && Array.isArray(data.poll.options)) {
+      const pollDiv = document.createElement("div");
+      pollDiv.classList.add("poll-container");
+      pollDiv.style.marginBottom = "16px";
+      pollDiv.style.padding = "12px";
+      pollDiv.style.border = "1px solid var(--border)";
+      pollDiv.style.borderRadius = "8px";
+      pollDiv.style.background = "var(--background)";
+
+      const question = document.createElement("div");
+      question.textContent = data.poll.question;
+      question.style.fontWeight = "600";
+      question.style.marginBottom = "8px";
+
+      const optionsList = document.createElement("div");
+      optionsList.classList.add("poll-options");
+      optionsList.style.display = "flex";
+      optionsList.style.flexDirection = "column";
+      optionsList.style.gap = "8px";
+
+      const totalVotes = data.poll.options.reduce((sum, opt) => sum + (opt.votes?.length || 0), 0);
+      const hasVoted = activeUser && data.poll.votedBy?.includes(activeUser.uid) || false;
+
+      data.poll.options.forEach((option, index) => {
+        const optDiv = document.createElement("div");
+        optDiv.style.position = "relative";
+        optDiv.style.padding = "8px";
+        optDiv.style.borderRadius = "6px";
+        optDiv.style.background = hasVoted ? "var(--surface)" : "transparent";
+        optDiv.style.cursor = hasVoted ? "default" : "pointer";
+        optDiv.style.transition = "background 0.2s";
+
+        if (hasVoted) {
+          const percent = totalVotes > 0 ? Math.round((option.votes?.length || 0) / totalVotes * 100) : 0;
+          const bar = document.createElement("div");
+          bar.style.height = "4px";
+          bar.style.background = `linear-gradient(to right, var(--success) ${percent}%, var(--border) ${percent}%)`;
+          bar.style.borderRadius = "2px";
+          bar.style.marginBottom = "4px";
+          const text = document.createElement("div");
+          text.innerHTML = `<strong>${option.text || `Option ${index + 1}`}</strong> (${option.votes?.length || 0} votes - ${percent}%)`;
+          optDiv.appendChild(bar);
+          optDiv.appendChild(text);
+        } else {
+          optDiv.textContent = option.text || `Option ${index + 1}`;
+          optDiv.style.border = "1px solid var(--border)";
+          optDiv.style.display = "flex";
+          optDiv.style.alignItems = "center";
+          optDiv.style.justifyContent = "center";
+          if (activeUser) {
+            optDiv.addEventListener("click", async () => {
+              await voteOnPoll(data.id, activeUser.uid, index);
+            });
+          }
+        }
+        optionsList.appendChild(optDiv);
+      });
+
+      pollDiv.appendChild(question);
+      pollDiv.appendChild(optionsList);
+      contentEl.appendChild(pollDiv);
+    }
+  }
+
+  // Update vote UI
   const upvotes = data.upvotes?.length || 0;
   const downvotes = data.downvotes?.length || 0;
   const score = upvotes - downvotes;
@@ -417,85 +534,22 @@ function updateThreadContent(threadEl, data, activeUser, commentCount) {
     if (!scoreDisplay) {
       scoreDisplay = document.createElement("span");
       scoreDisplay.classList.add("vote-score");
-      voteDiv.insertBefore(scoreDisplay, downvoteImg);
+      voteDiv.insertBefore(scoreDisplay, downvoteImg?.nextSibling || null);
     }
     scoreDisplay.textContent = score > 0 ? `+${score}` : score.toString();
     scoreDisplay.style.color = score > 0 ? "#2ecc71" : score < 0 ? "#e74c3c" : "#95a5a6";
-
-    const contentEl = threadEl.querySelector(".thread-content");
-if (contentEl) {
-  const maxLength = 200; // Match with getThread
-  contentEl.innerHTML = ""; // Clear existing content
-  if (data.content.length > maxLength) {
-    contentEl.classList.add("truncated");
-    const shortContent = data.content.substring(0, maxLength) + "...";
-    contentEl.textContent = shortContent;
-    let seeMore = contentEl.querySelector(".see-more");
-    if (!seeMore) {
-      seeMore = document.createElement("span");
-      seeMore.classList.add("see-more");
-      seeMore.textContent = "Se mer...";
-      seeMore.addEventListener("click", () => {
-        contentEl.classList.remove("truncated");
-        contentEl.textContent = data.content;
-        seeMore.remove();
-      });
-      contentEl.appendChild(seeMore);
-    }
-  } else {
-    contentEl.classList.remove("truncated");
-    contentEl.textContent = data.content || "";
-  }
-}
   }
 
+  // Update content and poll
+  const contentEl = threadEl.querySelector(".thread-content");
+  if (contentEl) {
+    renderContentAndPoll(contentEl, data, activeUser, true);
+  }
+
+  // Update comment count
   const commentBtn = threadEl.querySelector(".action-btn.comment");
   if (commentBtn) commentBtn.textContent = `💬 ${commentCount || 0}`;
 
-  const pollDiv = threadEl.querySelector(".poll-container");
-  if (pollDiv && data.poll?.question && Array.isArray(data.poll.options)) {
-    const optionsList = pollDiv.querySelector(".poll-options");
-    optionsList.innerHTML = "";
-    const totalVotes = data.poll.options.reduce((sum, opt) => sum + (opt.votes?.length || 0), 0);
-    const hasVoted = activeUser && data.poll.votedBy?.includes(activeUser.uid) || false;
-
-    data.poll.options.forEach((option, index) => {
-      const optDiv = document.createElement("div");
-      optDiv.style.position = "relative";
-      optDiv.style.padding = "8px";
-      optDiv.style.borderRadius = "6px";
-      optDiv.style.background = hasVoted ? "var(--surface)" : "transparent";
-      optDiv.style.cursor = hasVoted ? "default" : "pointer";
-      optDiv.style.transition = "background 0.2s";
-
-      if (hasVoted) {
-        const percent = totalVotes > 0 ? Math.round((option.votes?.length || 0) / totalVotes * 100) : 0;
-        const bar = document.createElement("div");
-        bar.style.height = "4px";
-        bar.style.background = `linear-gradient(to right, var(--success) ${percent}%, var(--border) ${percent}%)`;
-        bar.style.borderRadius = "2px";
-        bar.style.marginBottom = "4px";
-        const text = document.createElement("div");
-        text.innerHTML = `<strong>${option.text || `Option ${index + 1}`}</strong> (${option.votes?.length || 0} votes - ${percent}%)`;
-        optDiv.appendChild(bar);
-        optDiv.appendChild(text);
-      } else {
-        optDiv.textContent = option.text || `Option ${index + 1}`;
-        optDiv.style.border = "1px solid var(--border)";
-        optDiv.style.display = "flex";
-        optDiv.style.alignItems = "center";
-        optDiv.style.justifyContent = "center";
-        if (activeUser) {
-          optDiv.addEventListener("click", async () => {
-            await voteOnPoll(data.id, activeUser.uid, index);
-            optDiv.style.background = "var(--success)";
-            setTimeout(() => (optDiv.style.background = "var(--surface)"), 300);
-          });
-        }
-      }
-      optionsList.appendChild(optDiv);
-    });
-  }
   threadEl._threadData = data;
 }
 
