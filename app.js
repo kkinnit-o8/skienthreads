@@ -83,16 +83,39 @@ async function post(content, formElement, parentId = null) {
   }
 
   const school = await hentSkole(currentUser.uid);
-  const hashtags = [...content.matchAll(/#(\w+)/g)].map(match => match[1]);
+  const hashtags = [...content.matchAll(/#(\w+)/g)].map(match => match[1].toLowerCase());
 
   let pollData = null;
   const pollToggle = document.getElementById("poll-toggle");
   if (pollToggle?.checked) {
     const question = document.getElementById("poll-question")?.value.trim();
+
+    if (question.length > 300) {
+      showToast({
+        type: "error",
+        title: "For langt spørsmål",
+        message: "Spørsmålet i pollen kan ikke overstige 300 tegn!",
+        duration: 3000
+      });
+      return;
+}
+
     const optionInputs = document.querySelectorAll(".poll-option input");
-    const options = Array.from(optionInputs)
-      .map(input => ({ text: input.value.trim(), votes: [] }))
-      .filter(opt => opt.text);
+const options = Array.from(optionInputs)
+  .map(input => {
+    const text = input.value.trim();
+    if (text.length > 200) {
+      showToast({
+        type: "error",
+        title: "For langt alternativ",
+        message: "Hvert alternativ kan maks være 200 tegn!",
+        duration: 3000
+      });
+      throw new Error("Poll option too long");
+    }
+    return { text, votes: [] };
+  })
+  .filter(opt => opt.text);
 
     if (!question) {
       showToast({
