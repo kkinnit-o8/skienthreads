@@ -35,13 +35,26 @@
       
       <label for="regPass">Passord:</label>
       <input type="password" id="regPass" name="password" autocomplete="new-password" required>
+      <div class="terms-row">
+        <input type="checkbox" id="termsCheck" name="terms" required>
+        <label for="termsCheck" class="terms-label">Jeg aksepterer</label>
+        <span id="show-terms" role="button" tabindex="0" class="terms-link">vilkårene</span>
+      </div>
+
+      <div id="termsText" class="terms-text hidden" aria-hidden="true">
+        <p>Ved registrering lagrer vi e-postadressen din i Firebase Authentication for verifisering og innlogging. Passord håndteres og lagres sikkert av Firebase (ikke i klartekst). E‑post kan være tilgjengelig for systemadministrasjon ved behov; offentlige visninger viser kun brukernavn/tilknyttet skole. Kontakt skienthreads@hotmail.com for spørsmål eller sletting av data.</p>
+      </div>
+
       <button type="submit" id="registerBtn">Registrer</button>
     </form>
+
     <div>
-      <p class="gray">dette er helt anonymt</p>
       <p class="auth-toggle">Allerede registrert? <span id="go-to-login" class="link">Logg inn her</span></p>
     </div>
-    </div>
+  </div>
+
+  <!-- Inline simple terms paragraph (hidden by default) -->
+
 
   <!-- ============================================ -->
   <!-- LOGIN SCREEN -->
@@ -207,7 +220,11 @@
     </aside>
   </div>
 
-  <footer class="footer" id="footer">
+
+  <!-- ============================================ -->
+  <!-- FOOTER -->
+  <!-- Kommer ikke opp er det noe jeg(Volkan) gjorde? -->
+<footer class="footer" id="footer">
   <div class="footer-content">
     <div class="footer-contact">
       <span class="footer-contact-label">Contact:</span>
@@ -219,8 +236,7 @@
   </div>
 </footer>
 
-  <!-- Link to JavaScript file -->
-   <script type="module" src="utils.js"></script>
+  <script type="module" src="utils.js"></script>
   <script type="module" src="app.js?v=2"></script>
 </body>
 </html>

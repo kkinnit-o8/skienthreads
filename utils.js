@@ -122,6 +122,30 @@ async function registrerBruker(email, password, displayName, school, schoolDomai
   return userCred.user;
 }
 
+// Vilkår må bli endret senere
+
+(function(){
+  const toggle = document.getElementById('show-terms');
+  const txt = document.getElementById('termsText');
+
+  function toggleTerms(e){
+    // prevent any default/propagation to avoid toggling the checkbox
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+    if (!txt) return;
+    txt.classList.toggle('hidden');
+    if (!txt.classList.contains('hidden')) txt.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+
+  toggle?.addEventListener('click', toggleTerms);
+  // keyboard accessibility: Enter / Space
+  toggle?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ' || e.code === 'Space') {
+      toggleTerms(e);
+    }
+  });
+})();
+
 // 📌 Log in
 async function loggInn(email, password) {
   const userCred = await signInWithEmailAndPassword(auth, email, password);
