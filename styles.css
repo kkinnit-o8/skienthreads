@@ -2106,3 +2106,10 @@ body {
   margin-top: 8px;
   display: inline-block;
 }
+
+.gray{
+  color: gray;
+  font-size: 0.8rem;
+  align-self:center;
+  margin:0;
+}
