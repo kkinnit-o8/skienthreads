@@ -35,13 +35,26 @@
       
       <label for="regPass">Passord:</label>
       <input type="password" id="regPass" name="password" autocomplete="new-password" required>
+      <div class="terms-row">
+        <input type="checkbox" id="termsCheck" name="terms" required>
+        <label for="termsCheck" class="terms-label">Jeg aksepterer</label>
+        <span id="show-terms" role="button" tabindex="0" class="terms-link">vilkårene</span>
+      </div>
+
+      <div id="termsText" class="terms-text hidden" aria-hidden="true">
+        <p>Ved registrering lagrer vi e-postadressen din i Firebase Authentication for verifisering og innlogging. Passord håndteres og lagres sikkert av Firebase (ikke i klartekst). E‑post kan være tilgjengelig for systemadministrasjon ved behov; offentlige visninger viser kun brukernavn/tilknyttet skole. Kontakt skienthreads@hotmail.com for spørsmål eller sletting av data.</p>
+      </div>
+
       <button type="submit" id="registerBtn">Registrer</button>
     </form>
+
     <div>
-      <p class="gray">dette er helt anonymt</p>
       <p class="auth-toggle">Allerede registrert? <span id="go-to-login" class="link">Logg inn her</span></p>
     </div>
-    </div>
+  </div>
+
+  <!-- Inline simple terms paragraph (hidden by default) -->
+
 
   <!-- ============================================ -->
   <!-- LOGIN SCREEN -->
@@ -77,7 +90,7 @@
         <button class="tab-btn active" id="nylig">Nylig</button>
         <button class="tab-btn" id="popular">Populært</button>
       </div>
-
+      
       <!-- Right side actions -->
       <div class="nav-actions">
         <!-- School filter dropdown -->
@@ -89,16 +102,24 @@
         </select>
         
         <!-- Notification bell button -->
-        <button class="notification-btn" id="notificationBtn">
+        <button class="notification-btn" id="notificationBtn" aria-label="Varsler">
           🔔
           <span class="notification-badge hidden" id="notificationBadge">0</span>
         </button>
         
-        <!-- User profile button (shows initials) -->
-        <button class="profile-btn initials">xx</button>
+        <!-- User profile button (shows initials) + dropdown -->
+        <div class="profile-wrapper">
+          <button id="profileBtn" class="profile-btn initials" aria-haspopup="true" aria-expanded="false">xx</button>
+          <div id="profileMenu" class="profile-menu hidden" role="menu" aria-labelledby="profileBtn">
+            <button class="profile-menu-item" role="menuitem" data-action="profile" disabled><s>Min profil (kommmer senere)</s></button>
+            <button class="profile-menu-item" role="menuitem" data-action="settings" disabled><s>Innstillinger (kommer senere)</s></button>
+            <div class="profile-menu-sep" aria-hidden="true"></div>
+            <button class="profile-menu-item" id="log" role="menuitem" data-action="loggut()">Logg ut</button>
+          </div>
+        </div>
       </div>
     </div>
-    
+
     <!-- Notification dropdown panel -->
     <div class="notification-panel hidden" id="notificationPanel">
       <div class="notification-header">
@@ -207,7 +228,10 @@
     </aside>
   </div>
 
-  <footer class="footer" id="footer">
+
+  <!-- ============================================ -->
+  <!-- FOOTER -->
+<footer class="footer" id="footer">
   <div class="footer-content">
     <div class="footer-contact">
       <span class="footer-contact-label">Contact:</span>
@@ -219,8 +243,7 @@
   </div>
 </footer>
 
-  <!-- Link to JavaScript file -->
-   <script type="module" src="utils.js"></script>
+  <script type="module" src="utils.js"></script>
   <script type="module" src="app.js?v=2"></script>
 </body>
 </html>

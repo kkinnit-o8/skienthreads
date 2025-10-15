@@ -1172,12 +1172,7 @@ function showMainPage() {
 document.getElementById("go-to-login").addEventListener("click", showLogin);
 document.getElementById("go-to-register").addEventListener("click", showRegister);
 
-document.querySelector(".profile-btn")?.addEventListener("click", () => {
-  if (confirm("Vil du logge ut?")) {
-    loggUt();
-    showLogin();
-  }
-});
+
 
 // ============================================
 // USER PRESENCE & STATS
@@ -1624,12 +1619,8 @@ function updateNavForAuth(user) {
     }
     if (loginBtn) loginBtn.remove();
     profileBtn.textContent = getInitials(user.displayName || "Bruker");
-    profileBtn.onclick = () => {
-      if (confirm("Vil du logge ut?")) {
-        loggUt();
-        showLogin();
-      }
-    };
+    profileBtn.setAttribute('aria-haspopup', 'true');
+    profileBtn.setAttribute('aria-expanded', 'false');
   } else {
     if (!loginBtn) {
       loginBtn = document.createElement("button");
@@ -1641,6 +1632,59 @@ function updateNavForAuth(user) {
     if (profileBtn) profileBtn.remove();
   }
 }
+
+// Profile dropdown menu
+
+(async function(){
+  const profileBtn = document.getElementById('profileBtn') || document.querySelector('.profile-btn');
+  const menu = document.getElementById('profileMenu');
+  if (!profileBtn) return;
+
+  function openMenu(){
+    if (!menu) return;
+    menu.classList.remove('hidden');
+    profileBtn.setAttribute('aria-expanded','true');
+    menu.querySelector('.profile-menu-item')?.focus();
+  }
+  function closeMenu(){
+    if (!menu) return;
+    menu.classList.add('hidden');
+    profileBtn.setAttribute('aria-expanded','false');
+    profileBtn.focus();
+  }
+
+  profileBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (!menu) {
+      // fallback behaviour when no dropdown exists
+      if (confirm('Vil du logge ut?')) {
+        try { await loggUt(); } catch(err) { console.error('Logout failed:', err); }
+        showLogin();
+      }
+      return;
+    }
+    // toggle menu
+    if (menu.classList.contains('hidden')) openMenu(); else closeMenu();
+  });
+
+  // close when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!menu) return;
+    if (!menu.classList.contains('hidden') && !profileBtn.contains(e.target) && !menu.contains(e.target)) {
+      closeMenu();
+    }
+  });
+
+  // keyboard support
+  document.addEventListener('keydown', (e) => {
+    if (!menu) return;
+    if (e.key === 'Escape') closeMenu();
+    if ((e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') && document.activeElement === profileBtn) {
+      e.preventDefault();
+      openMenu();
+    }
+  });
+})();
 
 function updateUIForAuth(user) {
   const postThreadForm = document.getElementById("post-thread");
@@ -1752,6 +1796,23 @@ window.addEventListener("DOMContentLoaded", () => {
           <div class="poll-option"><input type="text" placeholder="Option 1"></div>
           <div class="poll-option"><input type="text" placeholder="Option 2"></div>
         `;
+      }
+    });
+  }
+
+  // logout button in pofile dropdown menu
+  const logoutBtn = document.getElementById('log');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (!confirm('Vil du logge ut?')) return;
+      try {
+        await loggUt();
+        showToast({ type: 'success', title: 'Logget ut', message: 'Du er nå logget ut.', duration: 2000 });
+        showLogin();
+      } catch (err) {
+        console.error('Logout failed:', err);
+        showToast({ type: 'error', title: 'Feil', message: 'Kunne ikke logge ut.' });
       }
     });
   }
