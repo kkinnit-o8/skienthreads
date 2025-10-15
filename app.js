@@ -28,6 +28,7 @@ let currentUser = null;
 let visibleThreadLimit = 10;
 let admin = false;
 let notificationUnsubscribe = null;
+let lastPostTime = 0;
 
 // ============================================
 // POST THREAD FUNCTIONALITY
@@ -55,6 +56,27 @@ async function post(content, formElement, parentId = null) {
       type: "error",
       title: "Tom tråd",
       message: "Tråden kan ikke være tom!",
+      duration: 3000
+    });
+    return;
+  }
+
+  if (content.length > 1000) {
+  showToast({
+    type: "error",
+    title: "For langt innhold",
+    message: "Tråder og kommentarer kan ikke overstige 1000 tegn!",
+    duration: 3000
+  });
+  return;
+}
+
+  const now = Date.now();
+  if (now - lastPostTime < 10000) {
+    showToast({
+      type: "error",
+      title: "Rate limit",
+      message: "Du kan bare poste én gang hvert 10. sekund!",
       duration: 3000
     });
     return;
@@ -107,6 +129,7 @@ async function post(content, formElement, parentId = null) {
       poll: pollData
     };
     const docRef = await leggTilDokument("Threads", threadData);
+    lastPostTime = now;
 
     if (parentId) {
       const parentThread = currentThreadsData.find(t => t.id === parentId);
@@ -398,6 +421,32 @@ function updateThreadContent(threadEl, data, activeUser, commentCount) {
     }
     scoreDisplay.textContent = score > 0 ? `+${score}` : score.toString();
     scoreDisplay.style.color = score > 0 ? "#2ecc71" : score < 0 ? "#e74c3c" : "#95a5a6";
+
+    const contentEl = threadEl.querySelector(".thread-content");
+if (contentEl) {
+  const maxLength = 200; // Match with getThread
+  contentEl.innerHTML = ""; // Clear existing content
+  if (data.content.length > maxLength) {
+    contentEl.classList.add("truncated");
+    const shortContent = data.content.substring(0, maxLength) + "...";
+    contentEl.textContent = shortContent;
+    let seeMore = contentEl.querySelector(".see-more");
+    if (!seeMore) {
+      seeMore = document.createElement("span");
+      seeMore.classList.add("see-more");
+      seeMore.textContent = "Se mer...";
+      seeMore.addEventListener("click", () => {
+        contentEl.classList.remove("truncated");
+        contentEl.textContent = data.content;
+        seeMore.remove();
+      });
+      contentEl.appendChild(seeMore);
+    }
+  } else {
+    contentEl.classList.remove("truncated");
+    contentEl.textContent = data.content || "";
+  }
+}
   }
 
   const commentBtn = threadEl.querySelector(".action-btn.comment");
@@ -490,8 +539,24 @@ function getThread(data, activeUser, container, commentCount) {
   header.appendChild(userInfo);
 
   const contentEl = document.createElement("div");
-  contentEl.classList.add("thread-content");
+contentEl.classList.add("thread-content");
+const maxLength = 200; // Adjust as needed
+if (data.content.length > maxLength) {
+  contentEl.classList.add("truncated");
+  const shortContent = data.content.substring(0, maxLength) + "...";
+  contentEl.textContent = shortContent;
+  const seeMore = document.createElement("span");
+  seeMore.classList.add("see-more");
+  seeMore.textContent = "Se mer...";
+  seeMore.addEventListener("click", () => {
+    contentEl.classList.remove("truncated");
+    contentEl.textContent = data.content;
+    seeMore.remove();
+  });
+  contentEl.appendChild(seeMore);
+} else {
   contentEl.textContent = data.content || "";
+}
 
   if (data.poll?.question && Array.isArray(data.poll.options)) {
     const pollDiv = document.createElement("div");
@@ -819,6 +884,7 @@ function updateCommentContent(commentEl, comment) {
       scoreDisplay.textContent = score > 0 ? `+${score}` : score.toString();
       scoreDisplay.style.color = score > 0 ? "#2ecc71" : score < 0 ? "#e74c3c" : "#95a5a6";
     }
+    
   }
 }
 
