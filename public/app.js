@@ -1550,6 +1550,10 @@ async function sjekk() {
            notificationUnsubscribe();
            notificationUnsubscribe = null;
          }
+           // Start listeners only for verified users
+           visTråderLive();
+           updateOnlineUsers();
+           updateTrendingHashtags();
          return;
        }
 
