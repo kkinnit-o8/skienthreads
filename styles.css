@@ -463,6 +463,8 @@ body {
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border);
   transition: all 0.3s ease;
+  max-width: 540px;
+  width: auto;
 }
 
 .thread-card:hover {
