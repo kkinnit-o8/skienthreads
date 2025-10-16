@@ -2143,8 +2143,8 @@ async function showProfilePage(displayName) {
     // Back button
     document.getElementById('backToFeed').addEventListener('click', showFeed);
     // Scroll to the username (profile-header-inner)
-    const headerInner = profileContainer.querySelector('.profile-header-inner');
-    headerInner.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const scrollto = document.documentElement.scrollTop > 0 ? document.documentElement : document.body;
+    scrollto.scrollIntoView({ behavior: 'smooth', block: 'start' });
     showToast({ type: 'success', title: 'Profile Loaded', message: `Viewing @${userData.username}'s profile`, duration: 2000 });
     document.title = `@${userData.username} - SkienThreads`;
   } catch (error) {
