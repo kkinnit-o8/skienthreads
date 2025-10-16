@@ -2744,3 +2744,22 @@ body {
     padding: 4px;
   }
 }
+
+/* Mobile Profile Menu */
+.mobile-profile-menu {
+  position: fixed;
+  z-index: 10000;
+  min-width: 180px;
+}
+
+.mobile-profile-menu.hidden {
+  display: none !important;
+}
+
+/* Ensure mobile profile menu is visible above everything */
+@media (max-width: 640px) {
+  .mobile-profile-menu {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+}
+

@@ -2402,8 +2402,52 @@ function syncMobileNavActions(original, clone) {
         };
       }
       
-      // Show notification button
-      if (notifBtn) notifBtn.style.display = '';
+      // *** FIX NOTIFICATION BUTTON FOR MOBILE ***
+      if (notifBtn) {
+        notifBtn.style.display = '';
+        
+        // If this is the mobile notification button, sync it with desktop
+        if (isMobile) {
+          // Remove any existing click handlers
+          const newNotifBtn = notifBtn.cloneNode(true);
+          notifBtn.parentNode.replaceChild(newNotifBtn, notifBtn);
+          notifBtn = newNotifBtn;
+          
+          // Add click handler that toggles the notification panel
+          notifBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const panel = document.getElementById('notificationPanel');
+            if (panel) {
+              panel.classList.toggle('hidden');
+            }
+          });
+          
+          // Sync badge with desktop notification button
+          const desktopNotifBtn = original.querySelector('#notificationBtn');
+          const desktopBadge = desktopNotifBtn?.querySelector('.notification-badge');
+          const mobileBadge = notifBtn.querySelector('.notification-badge');
+          
+          if (desktopBadge && mobileBadge) {
+            // Create observer to sync badge
+            const observer = new MutationObserver(() => {
+              mobileBadge.textContent = desktopBadge.textContent;
+              if (desktopBadge.classList.contains('hidden')) {
+                mobileBadge.classList.add('hidden');
+              } else {
+                mobileBadge.classList.remove('hidden');
+              }
+            });
+            
+            observer.observe(desktopBadge, {
+              childList: true,
+              characterData: true,
+              subtree: true,
+              attributes: true,
+              attributeFilter: ['class']
+            });
+          }
+        }
+      }
       
     } else {
       // User is logged out - show login button
