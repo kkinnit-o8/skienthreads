@@ -1746,7 +1746,30 @@ if (!window._presenceListenerAdded) {
   window._presenceListenerAdded = true;
 }
 
+// app.js - Updated sjekk() function
 async function sjekk() {
+  // ALWAYS check ban FIRST, even for existing sessions
+  if (currentUser?.uid) {
+    try {
+      console.log(`Checking ban for UID: ${currentUser.uid}`);
+      const banned = await isBanned(currentUser.uid);
+      console.log(`Ban status: ${banned}`);
+      if (banned) {
+        document.body.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; background: #f8f9fa; font-family: Arial, sans-serif;">
+            <h1 style="color: #dc3545; font-size: 3rem; margin: 0;">Du er bannet!</h1>
+            <p style="color: #6c757d; font-size: 1.2rem; margin: 10px 0;">Kontakt <a href="mailto:skienthreads@hotmail.com" style="color: #007bff;">skienthreads@hotmail.com</a> for spørsmål.</p>
+          </div>
+        `;
+        return; // STOP EVERYTHING - no UI, no listeners
+      }
+    } catch (error) {
+      console.error("Ban check failed:", error);
+      // Fallback: Assume not banned if check fails
+    }
+  }
+
+  // Proceed with normal auth monitoring
   overvåkBruker(async (user) => {
     currentUser = user;
     updateNavForAuth(user);
@@ -1768,51 +1791,51 @@ async function sjekk() {
       return;
     }
 
+    // RE-CHECK BAN after auth change (redundancy)
     try {
       const banned = await isBanned(user.uid);
       if (banned) {
-        document.body.innerHTML = "<h1>Du er bannet!</h1>";
+        document.body.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; background: #f8f9fa; font-family: Arial, sans-serif;">
+            <h1 style="color: #dc3545; font-size: 3rem; margin: 0;">Du er bannet!</h1>
+            <p style="color: #6c757d; font-size: 1.2rem; margin: 10px 0;">Kontakt <a href="mailto:skienthreads@hotmail.com" style="color: #007bff;">skienthreads@hotmail.com</a> for spørsmål.</p>
+          </div>
+        `;
         return;
       }
+    } catch (error) {
+      console.error("Ban re-check failed:", error);
+    }
 
-      if (user.emailVerified) {
-        showMainPage();
-        await updateUserPresence(user.uid, "online"); // Eller updateUserPresenceFirestore for Firestore
-        presenceInterval = startPresenceKeepAlive(user.uid); // Start periodisk oppdatering (kun for Firestore)
-        const isAdmin = await getadmin(user.uid);
-        admin = isAdmin === true;
-        if (admin) {
-          enableAdminFeatures();
-        } else {
-          disableAdminFeatures();
-        }
-        visTråderLive();
-        updateOnlineUsers();
-        updateTrendingHashtags();
-
-        if (notificationUnsubscribe) notificationUnsubscribe();
-        notificationUnsubscribe = overvåkNotifications(user.uid, (notifications) => {
-          displayNotifications(notifications);
-          updateNotificationBadge(notifications);
-        });
+    if (user.emailVerified) {
+      showMainPage();
+      await updateUserPresence(user.uid, "online");
+      presenceInterval = startPresenceKeepAlive(user.uid);
+      const isAdmin = await getadmin(user.uid);
+      admin = isAdmin === true;
+      if (admin) {
+        enableAdminFeatures();
       } else {
-        showToast({
-          type: "warning",
-          title: "E-postbekreftelse nødvendig",
-          message: "Vennligst bekreft e-posten din før du fortsetter.",
-          duration: 5000
-        });
-        admin = false;
         disableAdminFeatures();
       }
-    } catch (error) {
-      console.error("Auth check failed:", error);
+      visTråderLive();
+      updateOnlineUsers();
+      updateTrendingHashtags();
+
+      if (notificationUnsubscribe) notificationUnsubscribe();
+      notificationUnsubscribe = overvåkNotifications(user.uid, (notifications) => {
+        displayNotifications(notifications);
+        updateNotificationBadge(notifications);
+      });
+    } else {
       showToast({
-        type: "error",
-        title: "Feil",
-        message: `Autentisering feilet: ${error.message}`,
+        type: "warning",
+        title: "E-postbekreftelse nødvendig",
+        message: "Vennligst bekreft e-posten din før du fortsetter.",
         duration: 5000
       });
+      admin = false;
+      disableAdminFeatures();
     }
   });
 }
@@ -1886,10 +1909,10 @@ function setupMentionSupport() {
 // ============================================
 
 window.addEventListener("DOMContentLoaded", () => {
-  showMainPage();
-  setupMentionSupport()
   initRouter();
   sjekk();
+  showMainPage();
+  setupMentionSupport()
 
   const pollToggle = document.getElementById("poll-toggle");
   if (pollToggle) {
