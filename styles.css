@@ -2231,3 +2231,27 @@ body {
   align-self:center;
   margin:0;
 }
+
+.suggestion-box {
+  position: absolute;
+  background: white;
+  border: 1px solid #ccc;
+  max-height: 150px;
+  overflow-y: auto;
+  z-index: 10;
+}
+.suggestion-item {
+  padding: 8px;
+  cursor: pointer;
+}
+.suggestion-item:hover {
+  background: #f0f0f0;
+}
+.mention-link {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: bold;
+}
+.mention-link:hover {
+  text-decoration: underline;
+}

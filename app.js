@@ -1804,6 +1804,70 @@ async function sjekk() {
   });
 }
 
+// Håndter @name-støtte (autofullføring og klikkbare lenker)
+function setupMentionSupport() {
+  // Autofullføring
+  const contentInput = document.getElementById("thread-content");
+  const suggestionBox = document.createElement("div");
+  suggestionBox.className = "suggestion-box";
+  contentInput.parentNode.appendChild(suggestionBox);
+
+  contentInput.addEventListener("input", async (e) => {
+    const text = e.target.value;
+    suggestionBox.innerHTML = "";
+    if (text.includes("@")) {
+      const lastWord = text.split(" ").pop();
+      if (lastWord.startsWith("@") && lastWord.length > 1) {
+        const queryText = lastWord.slice(1).toLowerCase();
+        const users = await hentDokumenter("users");
+        const matchingUsers = users
+          .filter(user => user.displayName.toLowerCase().startsWith(queryText))
+          .slice(0, 5);
+        matchingUsers.forEach(user => {
+          const suggestion = document.createElement("div");
+          suggestion.textContent = `@${user.displayName}`;
+          suggestion.className = "suggestion-item";
+          suggestion.addEventListener("click", () => {
+            const words = text.split(" ");
+            words[words.length - 1] = `@${user.displayName}`;
+            contentInput.value = words.join(" ") + " ";
+            suggestionBox.innerHTML = "";
+            contentInput.focus();
+          });
+          suggestionBox.appendChild(suggestion);
+        });
+      }
+    }
+  });
+
+  // Klikkbare lenker i tråder
+  const getThreadOriginal = window.getThread; // Forutsetter at getThread finnes
+  window.getThread = function(data, index, user) {
+    const postEl = getThreadOriginal(data, index, user);
+    let content = data.content || "";
+    if (data.mentions && data.mentions.length) {
+      data.mentions.forEach(mention => {
+        const regex = new RegExp(`@${mention.displayName}\\b`, "gi");
+        content = content.replace(regex, `<a href="#" class="mention-link" data-uid="${mention.uid}">@${mention.displayName}</a>`);
+      });
+      postEl.querySelector(".post-content").innerHTML = content;
+      postEl.querySelectorAll(".mention-link").forEach(link => {
+        link.addEventListener("click", (e) => {
+          e.preventDefault();
+          const userId = link.dataset.uid;
+          showToast({
+            type: "info",
+            title: "Profil",
+            message: `Navigering til brukerprofil for UID: ${userId} (ikke implementert ennå)`,
+            duration: 3000
+          });
+        });
+      });
+    }
+    return postEl;
+  };
+}
+
 // ============================================
 // INITIALIZE
 // ============================================
@@ -1811,6 +1875,7 @@ async function sjekk() {
 window.addEventListener("DOMContentLoaded", () => {
   showMainPage();
   sjekk();
+  setupMentionSupport()
 
   const pollToggle = document.getElementById("poll-toggle");
   if (pollToggle) {

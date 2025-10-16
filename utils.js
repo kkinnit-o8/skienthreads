@@ -59,12 +59,73 @@ async function hentDokumenter(samling) {
 
 // ➕ Legg til nytt dokument i valgt samling
 async function leggTilDokument(samling, data) {
-    try {
-        await addDoc(collection(db, samling), data);
+  try {
+    let docData = { ...data, createdAt: serverTimestamp() };
 
-    } catch (error) {
-        console.error("Feil ved lagring:", error);
+    // Parse @navn og @alle kun for Threads med content
+    if (samling === "Threads" && data.content) {
+      const mentionedUsers = [];
+      const matches = data.content.match(/@(\w+)/g) || [];
+      
+      // Sjekk om brukeren er admin (for @alle)
+      const userDoc = await getDoc(doc(db, "users", data.authorId));
+      const isAdmin = userDoc.exists() && userDoc.data().admin === true;
+
+      for (const mention of matches) {
+        const username = mention.slice(1).toLowerCase();
+        if (username === "alle" && isAdmin) {
+          // Håndter @alle for administratorer
+          const usersSnapshot = await getDocs(collection(db, "users"));
+          usersSnapshot.forEach(doc => {
+            if (doc.id !== data.authorId) { // Unngå å varsle opphavsperson
+              mentionedUsers.push({ 
+                uid: doc.id, 
+                displayName: doc.data().displayName 
+              });
+            }
+          });
+        } else if (username !== "alle") {
+          // Håndter vanlig @navn
+          const usersSnapshot = await getDocs(collection(db, "users"));
+          const matchingUser = usersSnapshot.docs.find(doc => 
+            doc.data().displayName.toLowerCase() === username
+          );
+          if (matchingUser) {
+            mentionedUsers.push({ 
+              uid: matchingUser.id, 
+              displayName: matchingUser.data().displayName 
+            });
+          }
+        }
+      }
+
+      if (mentionedUsers.length > 0) {
+        docData.mentions = mentionedUsers;
+      }
+
+      const docRef = await addDoc(collection(db, samling), docData);
+
+      // Send notifikasjoner til nevnte brukere
+      if (mentionedUsers.length > 0) {
+        for (const mentionedUser of mentionedUsers) {
+          await createNotification(mentionedUser.uid, "mention", {
+            threadId: docRef.id,
+            actorName: data.authorName || "Ukjent",
+            content: data.content,
+          });
+        }
+      }
+
+      return docRef;
     }
+
+    // Andre samlinger
+    const docRef = await addDoc(collection(db, samling), docData);
+    return docRef;
+  } catch (error) {
+    console.error("Feil ved lagring:", error);
+    throw error;
+  }
 }
 // ❌ Slett dokument fra samling
 async function slettDokument(samling, id) {
@@ -218,7 +279,7 @@ export function startPresenceKeepAlive(userId) {
   if (!userId) return () => {};
   const interval = setInterval(async () => {
     try {
-      await updateUserPresenceFirestore(userId, "online");
+      await updateUserPresence(userId, "online");
     } catch (error) {
       console.error("Error keeping presence alive:", error);
     }
