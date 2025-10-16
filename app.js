@@ -18,7 +18,8 @@ import {
   slettDokument,
   getadmin,
   isBanned,
-  votePoll
+  votePoll,
+  startPresenceKeepAlive
 } from "./utils.js";
 
 let sortThreadsBy = "recent";
@@ -1209,33 +1210,42 @@ function updateUserUI(user) {
 }
 
 function updateOnlineUsers() {
-     const schoolContainer = document.getElementById("online-counter");
-     overvåkOnlineBrukere((onlineBySchool, error) => {
-       if (error) {
-         console.error("Online users listener error:", error);
-         schoolContainer.innerHTML = "<div>Feil ved lasting av online brukere</div>";
-         showToast({
-           type: "error",
-           title: "Feil",
-           message: "Kunne ikke laste online brukere",
-           duration: 3000
-         });
-         return;
-       }
-       schoolContainer.innerHTML = "";
-       Object.keys(onlineBySchool)
-         .sort()
-         .forEach(school => {
-           const schoolInfo = document.createElement("div");
-           schoolInfo.classList.add("school-info");
-           schoolInfo.innerHTML = `
-             <span class="school-name">${school}</span>
-             <span class="school-count">${onlineBySchool[school]} online</span>
-           `;
-           schoolContainer.appendChild(schoolInfo);
-         });
-     });
-   }
+  const schoolContainer = document.getElementById("online-counter");
+  overvåkOnlineBrukere((onlineBySchool, error) => { // Eller overvåkOnlineBrukereFirestore for Firestore
+    if (error) {
+      console.error("Online users listener error:", error);
+      schoolContainer.innerHTML = "<div>Feil ved lasting av online brukere</div>";
+      showToast({
+        type: "error",
+        title: "Feil",
+        message: "Kunne ikke laste online brukere",
+        duration: 3000
+      });
+      return;
+    }
+    schoolContainer.innerHTML = "";
+    if (Object.keys(onlineBySchool).length === 0) {
+      schoolContainer.innerHTML = "<div>Ingen brukere online</div>";
+      return;
+    }
+    Object.keys(onlineBySchool)
+      .sort()
+      .forEach(school => {
+        const schoolInfo = document.createElement("div");
+        schoolInfo.classList.add("school-info");
+        schoolInfo.innerHTML = `
+          <span class="school-name">${school}</span>
+          <span class="school-count">${onlineBySchool[school]} online</span>
+        `;
+        schoolContainer.appendChild(schoolInfo);
+      });
+  });
+}
+
+if (window._presenceListenerAdded) {
+  window.removeEventListener("beforeunload", window._presenceListenerAdded);
+  window._presenceListenerAdded = null;
+}
 
 function updateTrendingHashtags() {
   const trendingContainer = document.getElementById("popular-hashtags");
@@ -1724,74 +1734,75 @@ if (!window._presenceListenerAdded) {
 }
 
 async function sjekk() {
-     overvåkBruker(async (user) => {
-       currentUser = user;
-       updateNavForAuth(user);
-       updateUIForAuth(user);
-       updateUserUI(user);
+  overvåkBruker(async (user) => {
+    currentUser = user;
+    updateNavForAuth(user);
+    updateUIForAuth(user);
+    updateUserUI(user);
 
-       if (!user) {
-         admin = false;
-         disableAdminFeatures();
-         if (notificationUnsubscribe) {
-           notificationUnsubscribe();
-           notificationUnsubscribe = null;
-         }
-           // Start listeners only for verified users
-           visTråderLive();
-           updateOnlineUsers();
-           updateTrendingHashtags();
-         return;
-       }
+    let presenceInterval = null;
+    if (!user) {
+      admin = false;
+      disableAdminFeatures();
+      if (notificationUnsubscribe) {
+        notificationUnsubscribe();
+        notificationUnsubscribe = null;
+      }
+      if (presenceInterval) presenceInterval();
+      visTråderLive();
+      updateOnlineUsers();
+      updateTrendingHashtags();
+      return;
+    }
 
-       try {
-         const banned = await isBanned(user.uid);
-         if (banned) {
-           document.body.innerHTML = "<h1>Du er bannet!</h1>";
-           return;
-         }
+    try {
+      const banned = await isBanned(user.uid);
+      if (banned) {
+        document.body.innerHTML = "<h1>Du er bannet!</h1>";
+        return;
+      }
 
-         if (user.emailVerified) {
-           showMainPage();
-           await updateUserPresence(user.uid, "online");
-           const isAdmin = await getadmin(user.uid);
-           admin = isAdmin === true;
-           if (admin) {
-             enableAdminFeatures();
-           } else {
-             disableAdminFeatures();
-           }
-           // Start listeners only for verified users
-           visTråderLive();
-           updateOnlineUsers();
-           updateTrendingHashtags();
+      if (user.emailVerified) {
+        showMainPage();
+        await updateUserPresence(user.uid, "online"); // Eller updateUserPresenceFirestore for Firestore
+        presenceInterval = startPresenceKeepAlive(user.uid); // Start periodisk oppdatering (kun for Firestore)
+        const isAdmin = await getadmin(user.uid);
+        admin = isAdmin === true;
+        if (admin) {
+          enableAdminFeatures();
+        } else {
+          disableAdminFeatures();
+        }
+        visTråderLive();
+        updateOnlineUsers();
+        updateTrendingHashtags();
 
-           if (notificationUnsubscribe) notificationUnsubscribe();
-           notificationUnsubscribe = overvåkNotifications(user.uid, (notifications) => {
-             displayNotifications(notifications);
-             updateNotificationBadge(notifications);
-           });
-         } else {
-           showToast({
-             type: "warning",
-             title: "E-postbekreftelse nødvendig",
-             message: "Vennligst bekreft e-posten din før du fortsetter.",
-             duration: 5000
-           });
-           admin = false;
-           disableAdminFeatures();
-         }
-       } catch (error) {
-         console.error("Auth check failed:", error);
-         showToast({
-           type: "error",
-           title: "Feil",
-           message: `Autentisering feilet: ${error.message}`,
-           duration: 5000
-         });
-       }
-     });
-   }
+        if (notificationUnsubscribe) notificationUnsubscribe();
+        notificationUnsubscribe = overvåkNotifications(user.uid, (notifications) => {
+          displayNotifications(notifications);
+          updateNotificationBadge(notifications);
+        });
+      } else {
+        showToast({
+          type: "warning",
+          title: "E-postbekreftelse nødvendig",
+          message: "Vennligst bekreft e-posten din før du fortsetter.",
+          duration: 5000
+        });
+        admin = false;
+        disableAdminFeatures();
+      }
+    } catch (error) {
+      console.error("Auth check failed:", error);
+      showToast({
+        type: "error",
+        title: "Feil",
+        message: `Autentisering feilet: ${error.message}`,
+        duration: 5000
+      });
+    }
+  });
+}
 
 // ============================================
 // INITIALIZE

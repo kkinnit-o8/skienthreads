@@ -198,30 +198,57 @@ async function toggleLike(threadId, userId) {
   }
 }
 
-async function updateUserPresence(uid, state) {
-  const userRef = doc(db, "users", uid);
+export async function updateUserPresence(userId, state) {
+  const db = getFirestore();
+  const presenceRef = doc(db, "presence", userId);
 
-  await updateDoc(userRef, {
-    state: state,                 // "online" | "offline"
-    lastChanged: serverTimestamp() // keep track of last update
-  });
+  try {
+    await setDoc(presenceRef, { 
+      state, 
+      lastUpdated: Date.now(),
+      school: await hentSkole(userId)
+    }, { merge: true });
+  } catch (error) {
+    console.error("Error updating presence:", error);
+    throw error;
+  }
+}
+// Hjelpefunksjon for periodisk oppdatering (for Firestore)
+export function startPresenceKeepAlive(userId) {
+  if (!userId) return () => {};
+  const interval = setInterval(async () => {
+    try {
+      await updateUserPresenceFirestore(userId, "online");
+    } catch (error) {
+      console.error("Error keeping presence alive:", error);
+    }
+  }, 30000); // Oppdater hvert 30. sekund
+  return () => clearInterval(interval); // Returner funksjon for å stoppe intervallet
 }
 
-function overvåkOnlineBrukere(callback) {
-  const usersRef = collection(db, "users");
-  return onSnapshot(usersRef, (snapshot) => {
-    const onlineBySchool = {};
+export function overvåkOnlineBrukere(callback) {
+  const db = getFirestore();
+  const presenceRef = collection(db, "presence");
 
-    snapshot.docs.forEach(doc => {
-      const data = doc.data();
-      if (data.state === "online" && data.school) {
-        if (!onlineBySchool[data.school]) onlineBySchool[data.school] = 0;
-        onlineBySchool[data.school]++;
-      }
+  try {
+    onSnapshot(presenceRef, (snapshot) => {
+      const onlineBySchool = {};
+
+      snapshot.forEach(doc => {
+        const user = doc.data();
+        if (user.state === "online" && user.lastUpdated > Date.now() - 60000) {
+          const school = user.school || "Ukjent";
+          onlineBySchool[school] = (onlineBySchool[school] || 0) + 1;
+        }
+      });
+
+      callback(onlineBySchool, null);
+    }, (error) => {
+      callback({}, error);
     });
-
-    callback(onlineBySchool);
-  });
+  } catch (error) {
+    callback({}, error);
+  }
 }
 
 function overvåkTrendingHashtags(callback) {
@@ -446,8 +473,6 @@ export {
   overvåkBruker,
   hentSkole,
   toggleLike,
-  updateUserPresence,
-  overvåkOnlineBrukere,
   overvåkTrendingHashtags
 };
 
