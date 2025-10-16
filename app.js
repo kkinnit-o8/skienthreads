@@ -20,7 +20,8 @@ import {
   isBanned,
   votePoll,
   startPresenceKeepAlive,
-  getUserByUsername
+  getUserByUsername,
+  monitorEmailVerification
 } from "./utils.js";
 
 let sortThreadsBy = "recent";
@@ -1126,6 +1127,68 @@ function createCommentCard(comment, isNested, user) {
 // AUTH FORMS
 // ============================================
 
+// New function to show Verify Email screen
+function showVerifyEmailScreen(email) {
+  document.getElementById("register-screen").classList.add("hidden");
+  document.getElementById("login-screen").classList.add("hidden");
+  document.getElementById("main-page").classList.add("hidden");
+  document.getElementById("main-content").classList.add("hidden");
+  document.getElementById("footer").classList.add("hidden");
+  document.getElementById("profilePage")?.classList.add("hidden");
+
+  let verifyScreen = document.getElementById("verify-email-screen");
+  if (!verifyScreen) {
+    verifyScreen = document.createElement("div");
+    verifyScreen.id = "verify-email-screen";
+    verifyScreen.className = "auth-screen";
+    verifyScreen.innerHTML = `
+      <div class="auth-container">
+        <h2>Sjekk e-posten din</h2>
+        <p>Vi har sendt en bekreftelses-e-post til <strong>${email}</strong>.</p>
+        <p>Klikk på lenken i e-posten for å bekrefte kontoen din.</p>
+        <p>Hvis du ikke ser e-posten, sjekk søppelpostmappen eller <a href="#" id="resend-verification">send på nytt</a>.</p>
+        <p>Når du har bekreftet, blir du automatisk logget inn.</p>
+        <button id="back-to-login" class="btn btn-secondary">Tilbake til innlogging</button>
+      </div>
+    `;
+    document.body.appendChild(verifyScreen);
+  } else {
+    verifyScreen.classList.remove("hidden");
+    verifyScreen.querySelector("strong").textContent = email;
+  }
+
+  document.getElementById("back-to-login").addEventListener("click", () => {
+    verifyScreen.classList.add("hidden");
+    showLogin();
+  });
+
+  document.getElementById("resend-verification").addEventListener("click", async (e) => {
+    e.preventDefault();
+    try {
+      const auth = await import("https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js");
+      const user = auth.getAuth().currentUser;
+      if (user) {
+        await auth.sendEmailVerification(user);
+        showToast({
+          type: "success",
+          title: "E-post sendt",
+          message: "Bekreftelses-e-post sendt på nytt!",
+          duration: 3000
+        });
+      }
+    } catch (error) {
+      console.error("Error resending verification email:", error);
+      showToast({
+        type: "error",
+        title: "Feil",
+        message: `Kunne ikke sende e-post: ${error.message}`,
+        duration: 5000
+      });
+    }
+  });
+}
+
+// Updated register-form handler
 document.getElementById("register-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const email = document.getElementById("regEmail").value;
@@ -1134,12 +1197,26 @@ document.getElementById("register-form").addEventListener("submit", async (e) =>
   const school = document.getElementById("regSchool").value;
 
   try {
-    await registrerBruker(email, pass, name, school);
+    const user = await registrerBruker(email, pass, name, school);
     showToast({
       type: "success",
       title: "Registrering vellykket",
-      message: "Bruker opprettet, sjekk skole-eposten din!",
+      message: "Sjekk e-posten din for å bekrefte kontoen!",
       duration: 3000
+    });
+    showVerifyEmailScreen(email);
+
+    // Monitor email verification
+    monitorEmailVerification(user, (updatedUser) => {
+      currentUser = updatedUser;
+      showMainPage();
+      showToast({
+        type: "success",
+        title: "E-post bekreftet",
+        message: "Du er nå logget inn!",
+        duration: 3000
+      });
+      sjekk();
     });
   } catch (error) {
     console.error("Registration failed:", error);

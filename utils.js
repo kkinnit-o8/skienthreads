@@ -17,7 +17,7 @@ import {
   where,           // ← ADD THIS
   orderBy,         // ← ADD THIS
   limit,           // ← ADD THIS
-  writeBatch
+  writeBatch,
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 import {
@@ -160,27 +160,44 @@ async function oppdaterDokument(samling, id, data) {
 
 
 
-// 📌 Register new user with school email
-async function registrerBruker(email, password, displayName, school, schoolDomain="@skole.telemarkfylke.no") {
+// Updated registrerBruker
+async function registrerBruker(email, password, displayName, school, schoolDomain = "@skole.telemarkfylke.no") {
   if (!email.toLowerCase().endsWith(schoolDomain)) {
     throw new Error("Må bruke skole-epost: " + schoolDomain);
   }
 
-  const userCred = await createUserWithEmailAndPassword(auth, email, password);
-  await updateProfile(userCred.user, { displayName });
-  await sendEmailVerification(userCred.user);
+  try {
+    const userCred = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCred.user;
+    await updateProfile(user, { displayName });
+    await sendEmailVerification(user);
 
-  await setDoc(doc(db, "users", userCred.user.uid), {
-    email: userCred.user.email,
-    displayName: displayName,
-    school: school,
-    createdAt: new Date(),
-    state: "offline",                 // "online" | "offline"
-    lastChanged: serverTimestamp(), // keep track of last update,
-    admin: false
+    await setDoc(doc(db, "users", user.uid), {
+      email: user.email,
+      displayName,
+      school,
+      createdAt: new Date(),
+      state: "offline",
+      lastChanged: serverTimestamp(),
+      admin: false
+    });
+
+    return user; // Return user for monitoring
+  } catch (error) {
+    console.error("Error registering user:", error);
+    throw error;
+  }
+}
+
+// New monitorEmailVerification
+export function monitorEmailVerification(user, callback) {
+  const unsubscribe = onAuthStateChanged(auth, (updatedUser) => {
+    if (updatedUser && updatedUser.uid === user.uid && updatedUser.emailVerified) {
+      unsubscribe(); // Stop monitoring
+      callback(updatedUser);
+    }
   });
-
-  return userCred.user;
+  return unsubscribe;
 }
 
 // Vilkår må bli endret senere
