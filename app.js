@@ -1767,14 +1767,14 @@ function removeToast(toast) {
 // ============================================
 
 function updateNavForAuth(user) {
-  const navActions = document.querySelector(".nav-actions");
-  let profileBtn = navActions.querySelector(".profile-btn");
-  let loginBtn = navActions.querySelector(".login-btn");
+  const navActions = document.querySelector('.nav-actions');
+  let profileBtn = navActions?.querySelector('.profile-btn');
+  let loginBtn = navActions?.querySelector('.login-btn');
 
   if (user) {
     if (!profileBtn) {
-      profileBtn = document.createElement("button");
-      profileBtn.className = "profile-btn initials";
+      profileBtn = document.createElement('button');
+      profileBtn.className = 'profile-btn initials';
       navActions.appendChild(profileBtn);
     }
     if (loginBtn) loginBtn.remove();
@@ -1783,63 +1783,77 @@ function updateNavForAuth(user) {
     profileBtn.setAttribute('aria-expanded', 'false');
   } else {
     if (!loginBtn) {
-      loginBtn = document.createElement("button");
-      loginBtn.className = "btn btn-primary login-btn";
-      loginBtn.textContent = "Logg inn";
+      loginBtn = document.createElement('button');
+      loginBtn.className = 'btn btn-primary login-btn';
+      loginBtn.textContent = 'Logg inn';
       loginBtn.onclick = showLogin;
       navActions.appendChild(loginBtn);
     }
     if (profileBtn) profileBtn.remove();
   }
+
+  // Sync mobile nav if it exists
+  if (window.syncMobileNav) {
+    window.syncMobileNav(user);
+  }
 }
 
 // Profile dropdown menu
 
+// Profile dropdown menu - use event delegation for dynamically created buttons
 (async function(){
-  const profileBtn = document.getElementById('profileBtn') || document.querySelector('.profile-btn');
   const menu = document.getElementById('profileMenu');
-  if (!profileBtn) return;
 
   function openMenu(){
     if (!menu) return;
     menu.classList.remove('hidden');
-    profileBtn.setAttribute('aria-expanded','true');
+    const profileBtns = document.querySelectorAll('.profile-btn');
+    profileBtns.forEach(btn => btn.setAttribute('aria-expanded','true'));
     menu.querySelector('.profile-menu-item')?.focus();
   }
+  
   function closeMenu(){
     if (!menu) return;
     menu.classList.add('hidden');
-    profileBtn.setAttribute('aria-expanded','false');
-    profileBtn.focus();
+    const profileBtns = document.querySelectorAll('.profile-btn');
+    profileBtns.forEach(btn => btn.setAttribute('aria-expanded','false'));
   }
 
-  profileBtn.addEventListener('click', async (e) => {
-    e.stopPropagation();
-    if (!menu) {
-      // fallback behaviour when no dropdown exists
-      if (confirm('Vil du logge ut?')) {
-        try { await loggUt(); } catch(err) { console.error('Logout failed:', err); }
-        showLogin();
+  // Use event delegation for profile button clicks
+  document.addEventListener('click', (e) => {
+    const clickedProfile = e.target.closest('.profile-btn');
+    if (clickedProfile) {
+      e.stopPropagation();
+      if (!menu) {
+        // Fallback when no dropdown exists
+        if (confirm('Vil du logge ut?')) {
+          loggUt().catch(err => console.error('Logout failed:', err));
+          showLogin();
+        }
+        return;
       }
-      return;
+      // Toggle menu
+      if (menu.classList.contains('hidden')) openMenu(); 
+      else closeMenu();
     }
-    // toggle menu
-    if (menu.classList.contains('hidden')) openMenu(); else closeMenu();
   });
 
-  // close when clicking outside
+  // Close when clicking outside
   document.addEventListener('click', (e) => {
     if (!menu) return;
-    if (!menu.classList.contains('hidden') && !profileBtn.contains(e.target) && !menu.contains(e.target)) {
+    if (!menu.classList.contains('hidden') && 
+        !e.target.closest('.profile-btn') && 
+        !menu.contains(e.target)) {
       closeMenu();
     }
   });
 
-  // keyboard support
+  // Keyboard support
   document.addEventListener('keydown', (e) => {
     if (!menu) return;
     if (e.key === 'Escape') closeMenu();
-    if ((e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') && document.activeElement === profileBtn) {
+    if ((e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') && 
+        document.activeElement?.classList.contains('profile-btn')) {
       e.preventDefault();
       openMenu();
     }
@@ -2023,15 +2037,40 @@ function setupMentionSupport() {
 // ============================================
 
 window.addEventListener("DOMContentLoaded", () => {
-  initRouter();
+    initRouter();
   sjekk();
   showMainPage();
-  setupMentionSupport()
+  setupMentionSupport();
 
-    // Add these new calls:
+  // *** ADD THESE NEW CALLS: ***
   initMobileSidebar();
   initCompactInfoRow();
   updateCompactInfo();
+
+  // *** ADD THIS EVENT DELEGATION FOR LOGOUT BUTTON: ***
+  document.addEventListener('click', async (e) => {
+    if (e.target.id === 'log' || e.target.closest('#log')) {
+      e.preventDefault();
+      if (!confirm('Vil du logge ut?')) return;
+      try {
+        await loggUt();
+        showToast({ 
+          type: 'success', 
+          title: 'Logget ut', 
+          message: 'Du er nå logget ut.', 
+          duration: 2000 
+        });
+        showLogin();
+      } catch (err) {
+        console.error('Logout failed:', err);
+        showToast({ 
+          type: 'error', 
+          title: 'Feil', 
+          message: 'Kunne ikke logge ut.' 
+        });
+      }
+    }
+  });
 
   const pollToggle = document.getElementById("poll-toggle");
   if (pollToggle) {
@@ -2059,30 +2098,18 @@ window.addEventListener("DOMContentLoaded", () => {
 const originalUpdateTrendingHashtags = updateTrendingHashtags;
 updateTrendingHashtags = function() {
   originalUpdateTrendingHashtags();
-  updateCompactInfo();
+  if (typeof updateCompactInfo === 'function') {
+    updateCompactInfo();
+  }
 };
 
 const originalUpdateOnlineUsers = updateOnlineUsers;
 updateOnlineUsers = function() {
   originalUpdateOnlineUsers();
-  updateCompactInfo();
-};
-  // logout button in pofile dropdown menu
-  const logoutBtn = document.getElementById('log');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      if (!confirm('Vil du logge ut?')) return;
-      try {
-        await loggUt();
-        showToast({ type: 'success', title: 'Logget ut', message: 'Du er nå logget ut.', duration: 2000 });
-        showLogin();
-      } catch (err) {
-        console.error('Logout failed:', err);
-        showToast({ type: 'error', title: 'Feil', message: 'Kunne ikke logge ut.' });
-      }
-    });
+  if (typeof updateCompactInfo === 'function') {
+    updateCompactInfo();
   }
+};
 
   const addOptionBtn = document.getElementById("add-option");
   if (addOptionBtn) {
@@ -2283,6 +2310,19 @@ function initMobileSidebar() {
   `;
   document.body.appendChild(drawer);
 
+  // *** CREATE MOBILE PROFILE MENU ***
+  const mobileProfileMenu = document.createElement('div');
+  mobileProfileMenu.id = 'mobileProfileMenu';
+  mobileProfileMenu.className = 'profile-menu mobile-profile-menu hidden';
+  mobileProfileMenu.setAttribute('role', 'menu');
+  mobileProfileMenu.innerHTML = `
+    <button class="profile-menu-item" role="menuitem" data-action="profile" disabled><s>Min profil (kommer senere)</s></button>
+    <button class="profile-menu-item" role="menuitem" data-action="settings" disabled><s>Innstillinger (kommer senere)</s></button>
+    <div class="profile-menu-sep" aria-hidden="true"></div>
+    <button class="profile-menu-item" id="mobileLogout" role="menuitem">Logg ut</button>
+  `;
+  document.body.appendChild(mobileProfileMenu);
+
   // Hamburger button (add to navbar)
   const hamburger = document.createElement('button');
   hamburger.className = 'hamburger-btn';
@@ -2307,46 +2347,8 @@ function initMobileSidebar() {
   const logo = navbar.querySelector('.logo');
   logo.after(controlRow);
   
-  // Sync cloned elements with originals
-  syncMobileNavActions(navActions, navActionsClone);
-}
-
-function syncMobileNavActions(original, clone) {
-  // Sync notification button
-  const originalNotif = original.querySelector('#notificationBtn');
-  const cloneNotif = clone.querySelector('#notificationBtn');
-  
-  if (originalNotif && cloneNotif) {
-    cloneNotif.addEventListener('click', (e) => {
-      e.stopPropagation();
-      originalNotif.click();
-    });
-  }
-  
-  // Sync profile button
-  const originalProfile = original.querySelector('.profile-btn');
-  const cloneProfile = clone.querySelector('.profile-btn');
-  
-  if (originalProfile && cloneProfile) {
-    cloneProfile.addEventListener('click', (e) => {
-      e.stopPropagation();
-      originalProfile.click();
-    });
-    
-    // Copy initials
-    cloneProfile.textContent = originalProfile.textContent;
-  }
-  
-  // Update cloned profile when original updates
-  const observer = new MutationObserver(() => {
-    if (cloneProfile && originalProfile) {
-      cloneProfile.textContent = originalProfile.textContent;
-    }
-  });
-  
-  if (originalProfile) {
-    observer.observe(originalProfile, { childList: true, characterData: true, subtree: true });
-  }
+  // Store the sync function globally so it can be called from updateNavForAuth
+  window.syncMobileNav = syncMobileNavActions(navActions, navActionsClone);
 
   // Event listeners
   document.getElementById("hamburgerBtn").addEventListener('click', openDrawer);
@@ -2364,6 +2366,128 @@ function syncMobileNavActions(original, clone) {
   // Make drawer hashtags clickable
   setupDrawerHashtagListeners();
 }
+
+function syncMobileNavActions(original, clone) {
+  // Function to update both original and clone
+  function updateBothNavs(user) {
+    updateSingleNav(original, user, false); // desktop
+    updateSingleNav(clone, user, true);     // mobile
+  }
+
+  // Function to update a single nav
+  function updateSingleNav(nav, user, isMobile) {
+    let profileBtn = nav.querySelector('.profile-btn');
+    let loginBtn = nav.querySelector('.login-btn');
+    let notifBtn = nav.querySelector('#notificationBtn');
+
+    if (user) {
+      // User is logged in - show profile button
+      if (loginBtn) loginBtn.remove();
+      
+      if (!profileBtn) {
+        profileBtn = document.createElement('button');
+        profileBtn.className = 'profile-btn initials';
+        profileBtn.setAttribute('aria-haspopup', 'true');
+        profileBtn.setAttribute('aria-expanded', 'false');
+        nav.appendChild(profileBtn);
+      }
+      
+      profileBtn.textContent = getInitials(user.displayName || "Bruker");
+      
+      // *** ADD MOBILE-SPECIFIC CLICK HANDLER ***
+      if (isMobile) {
+        profileBtn.onclick = (e) => {
+          e.stopPropagation();
+          toggleMobileProfileMenu(profileBtn);
+        };
+      }
+      
+      // Show notification button
+      if (notifBtn) notifBtn.style.display = '';
+      
+    } else {
+      // User is logged out - show login button
+      if (profileBtn) profileBtn.remove();
+      
+      if (!loginBtn) {
+        loginBtn = document.createElement('button');
+        loginBtn.className = 'btn btn-primary login-btn';
+        loginBtn.textContent = 'Logg inn';
+        loginBtn.onclick = showLogin;
+        nav.appendChild(loginBtn);
+      }
+
+      // Hide notification button
+      if (notifBtn) notifBtn.style.display = 'none';
+    }
+  }
+
+  // Initial sync
+  updateBothNavs(currentUser);
+
+  // Return update function so it can be called when user changes
+  return updateBothNavs;
+}
+
+// Toggle mobile profile menu
+function toggleMobileProfileMenu(button) {
+  const menu = document.getElementById('mobileProfileMenu');
+  if (!menu) return;
+  
+  if (menu.classList.contains('hidden')) {
+    // Position menu below the button
+    const rect = button.getBoundingClientRect();
+    menu.style.top = `${rect.bottom + 8}px`;
+    menu.style.right = `${window.innerWidth - rect.right}px`;
+    menu.classList.remove('hidden');
+    button.setAttribute('aria-expanded', 'true');
+  } else {
+    menu.classList.add('hidden');
+    button.setAttribute('aria-expanded', 'false');
+  }
+}
+
+// Close mobile profile menu when clicking outside
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('mobileProfileMenu');
+  if (!menu) return;
+  
+  const mobileProfileBtn = document.querySelector('.mobile-control-row .profile-btn');
+  if (!menu.classList.contains('hidden') && 
+      !menu.contains(e.target) && 
+      e.target !== mobileProfileBtn) {
+    menu.classList.add('hidden');
+    if (mobileProfileBtn) {
+      mobileProfileBtn.setAttribute('aria-expanded', 'false');
+    }
+  }
+});
+
+// Mobile logout button handler
+document.addEventListener('click', async (e) => {
+  if (e.target.id === 'mobileLogout') {
+    e.preventDefault();
+    if (!confirm('Vil du logge ut?')) return;
+    try {
+      await loggUt();
+      showToast({ 
+        type: 'success', 
+        title: 'Logget ut', 
+        message: 'Du er nå logget ut.', 
+        duration: 2000 
+      });
+      document.getElementById('mobileProfileMenu')?.classList.add('hidden');
+      showLogin();
+    } catch (err) {
+      console.error('Logout failed:', err);
+      showToast({ 
+        type: 'error', 
+        title: 'Feil', 
+        message: 'Kunne ikke logge ut.' 
+      });
+    }
+  }
+});
 
 function setupDrawerHashtagListeners() {
   const drawerTrending = document.getElementById('drawerTrending');
@@ -2535,17 +2659,3 @@ function updateCompactInfo() {
     });
   }
 }
-
-// Update these existing functions to also update compact info:
-const originalUpdateTrendingHashtags = updateTrendingHashtags;
-updateTrendingHashtags = function() {
-  originalUpdateTrendingHashtags();
-  updateCompactInfo();
-};
-
-const originalUpdateOnlineUsers = updateOnlineUsers;
-updateOnlineUsers = function() {
-  originalUpdateOnlineUsers();
-  updateCompactInfo();
-};
-
