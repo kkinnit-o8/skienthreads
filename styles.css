@@ -357,27 +357,6 @@ body {
   border-color: var(--primary-color);
 }
 
-/* Notification button with fixed size */
-.notification-btn {
-  position: relative;
-  background: none;
-  border: none;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  cursor: pointer;
-  border-radius: 50%;
-  transition: background-color 0.2s;
-  flex-shrink: 0;
-}
-
-.notification-btn:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
 .notification-badge {
   position: absolute;
   top: 4px;
@@ -391,10 +370,6 @@ body {
   min-width: 16px;
   text-align: center;
   line-height: 1;
-}
-
-.notification-badge.hidden {
-  display: none;
 }
 
 /* Profile button (circular with initials) - fixed size to prevent stretch */
@@ -1212,16 +1187,6 @@ body {
 /* NOTIFICATION SYSTEM */
 /* ============================================ */
 
-.notification-btn {
-  position: relative;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 50%;
-  transition: background-color 0.2s;
-}
 
 .notification-btn:hover {
   background-color: rgba(0, 0, 0, 0.05);
@@ -1239,10 +1204,6 @@ body {
   border-radius: 10px;
   min-width: 16px;
   text-align: center;
-}
-
-.notification-badge.hidden {
-  display: none;
 }
 
 .notification-panel {
@@ -1532,11 +1493,6 @@ body {
   .notification-panel {
     right: 10px;
     width: calc(100vw - 20px);
-  }
-  
-  .notification-btn {
-    font-size: 1.3rem;
-    padding: 0.4rem;
   }
 }
 /* ============================================ */
@@ -2648,13 +2604,6 @@ body {
     display: none;
   }
 
-  /* Adjust notification and profile buttons */
-  .notification-btn,
-  .profile-btn {
-    width: 44px;
-    height: 44px;
-  }
-
   /* Full width notification panel on mobile */
   .notification-panel {
     left: 0;
@@ -2769,6 +2718,7 @@ body {
 /* Remove ALL other .notification-badge rules and use only this */
 /* ============================================ */
 
+/* NOTIFICATION BUTTON & BADGE - FIXED */
 .notification-btn {
   position: relative;
   background: none;
@@ -2790,7 +2740,6 @@ body {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-/* MASTER NOTIFICATION BADGE RULE - THIS IS THE ONLY ONE NEEDED */
 .notification-badge {
   position: absolute;
   top: -6px;
@@ -2813,4 +2762,10 @@ body {
 
 .notification-badge.hidden {
   display: none !important;
+}
+
+.notification-badge {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }

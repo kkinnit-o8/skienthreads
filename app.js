@@ -1557,68 +1557,28 @@ function displayNotifications(notifications) {
 }
 
 function updateNotificationBadge(notifications) {
-  const badge = document.getElementById("notificationBadge");
-  if (!badge) return;
+  const desktopBadge = document.getElementById("notificationBadge");
+  const mobileBadge = document.querySelector(".mobile-control-row #notificationBadge");
   
   const unreadCount = notifications.filter(n => !n.read).length;
-  
-  if (unreadCount > 0) {
-    badge.textContent = unreadCount > 99 ? "99+" : unreadCount;
-    badge.classList.remove("hidden");
-    
-    // Apply consistent styling
-    badge.style.display = "flex";
-    badge.style.alignItems = "center";
-    badge.style.justifyContent = "center";
-    badge.style.backgroundColor = "#dc3545";
-    badge.style.color = "white";
-    badge.style.borderRadius = "50%";
-    badge.style.fontSize = "0.65rem";
-    badge.style.fontWeight = "bold";
-    badge.style.position = "absolute";
-    badge.style.top = "-6px";
-    badge.style.right = "-6px";
-    badge.style.width = "20px";
-    badge.style.height = "20px";
-    badge.style.minWidth = "20px";
-    badge.style.lineHeight = "1";
-    badge.style.padding = "0";
-    badge.style.zIndex = "10";
-  } else {
-    badge.textContent = "";
-    badge.classList.add("hidden");
-    badge.style.display = "none";
+  // Update desktop badge
+  if (desktopBadge) {
+    if (unreadCount > 0) {
+      desktopBadge.textContent = unreadCount > 99 ? "99+" : unreadCount;
+      desktopBadge.classList.remove("hidden");  // Remove hidden class FIRST
+      // Don't set display, let CSS handle it
+    } else {
+      desktopBadge.classList.add("hidden");  // Add hidden class
+    }
   }
   
-  // Also sync mobile badge if it exists
-  const mobileBadge = document.querySelector(".mobile-control-row #notificationBadge");
+  // Update mobile badge
   if (mobileBadge) {
     if (unreadCount > 0) {
       mobileBadge.textContent = unreadCount > 99 ? "99+" : unreadCount;
       mobileBadge.classList.remove("hidden");
-      
-      // Same styling
-      mobileBadge.style.display = "flex";
-      mobileBadge.style.alignItems = "center";
-      mobileBadge.style.justifyContent = "center";
-      mobileBadge.style.backgroundColor = "#dc3545";
-      mobileBadge.style.color = "white";
-      mobileBadge.style.borderRadius = "50%";
-      mobileBadge.style.fontSize = "0.65rem";
-      mobileBadge.style.fontWeight = "bold";
-      mobileBadge.style.position = "absolute";
-      mobileBadge.style.top = "-6px";
-      mobileBadge.style.right = "-6px";
-      mobileBadge.style.width = "20px";
-      mobileBadge.style.height = "20px";
-      mobileBadge.style.minWidth = "20px";
-      mobileBadge.style.lineHeight = "1";
-      mobileBadge.style.padding = "0";
-      mobileBadge.style.zIndex = "10";
     } else {
-      mobileBadge.textContent = "";
       mobileBadge.classList.add("hidden");
-      mobileBadge.style.display = "none";
     }
   }
 }
@@ -2233,9 +2193,16 @@ async function sjekk() {
 
       if (notificationUnsubscribe) notificationUnsubscribe();
       notificationUnsubscribe = overvåkNotifications(user.uid, (notifications) => {
-        displayNotifications(notifications);
-        updateNotificationBadge(notifications); // Call the fixed function
-      });
+  console.log("Total notifications:", notifications.length);
+  console.log("Unread:", notifications.filter(n => !n.read).length);
+  
+  // Direct test
+  const badge = document.getElementById("notificationBadge");
+  console.log("Badge element found:", badge ? "YES" : "NO");
+  
+  displayNotifications(notifications);
+  updateNotificationBadge(notifications);
+});
     } else {
       showToast({
         type: "warning",
