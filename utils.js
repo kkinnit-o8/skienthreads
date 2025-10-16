@@ -519,6 +519,57 @@ export async function votePoll(threadId, userId, optionIndex) {
     throw error;
   }
 }
+async function getUserProfileData(userId) {
+  try {
+    const threads = await hentDokumenter("Threads");
+    const userThreads = threads.filter(thread => thread.authorId === userId && !thread.parentId);
+    const totalThreads = userThreads.length;
+    const totalUpvotes = userThreads.reduce((sum, thread) => sum + (thread.upvotes?.length || 0), 0);
+    return {
+      threads: userThreads,
+      totalThreads,
+      totalUpvotes
+    };
+  } catch (error) {
+    console.error("Error in getUserProfileData:", error);
+    throw error;
+  }
+}
+
+// utils.js - Add this async function
+export async function getUserByUsername(displayName) {
+  try {
+    const users = await hentDokumenter("users");
+
+    // Slugify displayName for comparison (e.g., "John Doe" → "john-doe")
+    const slugifiedInput = displayName.toLowerCase().replace(/\s+/g, '-');
+    const user = users.find((u, index) => {
+      const storedDisplayName = (u.displayName || '').toLowerCase().replace(/\s+/g, '-');
+      return storedDisplayName === slugifiedInput;
+    });
+
+    if (!user) {
+      console.error(`No user found for displayName: ${displayName}`);
+      throw new Error("User not found");
+    }
+
+    // Use document ID as uid if not present in data
+    const userId = user.uid || user.id || users.findIndex((u, i) => u === user); // Fallback to index if no ID
+
+    const profileData = await getUserProfileData(userId);
+    return {
+      id: userId,
+      username: user.displayName || "Anonym",
+      school: user.school || "Ukjent",
+      threads: profileData.threads,
+      totalThreads: profileData.totalThreads,
+      totalUpvotes: profileData.totalUpvotes
+    };
+  } catch (error) {
+    console.error("Error in getUserByUsername:", error);
+    throw error;
+  }
+}
 
 export {
   markNotificationRead,

@@ -19,7 +19,8 @@ import {
   getadmin,
   isBanned,
   votePoll,
-  startPresenceKeepAlive
+  startPresenceKeepAlive,
+  getUserByUsername
 } from "./utils.js";
 
 let sortThreadsBy = "recent";
@@ -593,6 +594,7 @@ function getThread(data, activeUser, container, commentCount) {
   const avatar = document.createElement("div");
   avatar.classList.add("user-avatar");
   avatar.textContent = getInitials(data.authorName || "A");
+  avatar.style.cursor = "pointer";
 
   const userInfo = document.createElement("div");
   userInfo.classList.add("thread-user-info");
@@ -600,6 +602,17 @@ function getThread(data, activeUser, container, commentCount) {
   const username = document.createElement("div");
   username.classList.add("thread-username");
   username.textContent = data.authorName || "Anonym";
+  username.style.cursor = "pointer";
+
+  // In getThread and createCommentCard, change to:
+   username.addEventListener('click', (e) => {
+     e.preventDefault();
+     navigateToProfile(data.authorName);  // Or data.username if separate field
+   });
+   avatar.addEventListener('click', (e) => {
+     e.preventDefault();
+     navigateToProfile(data.authorName);  // Or data.username if separate field
+   });
 
   const meta = document.createElement("div");
   meta.classList.add("thread-meta");
@@ -1874,8 +1887,9 @@ function setupMentionSupport() {
 
 window.addEventListener("DOMContentLoaded", () => {
   showMainPage();
-  sjekk();
   setupMentionSupport()
+  initRouter();
+  sjekk();
 
   const pollToggle = document.getElementById("poll-toggle");
   if (pollToggle) {
@@ -1949,5 +1963,120 @@ window.addEventListener("DOMContentLoaded", () => {
         div.remove();
       });
     });
+  }
+});
+
+// app.js - Add these globals and functions
+
+let currentRoute = window.location.pathname;  // Track current path
+
+// Simple router function
+function initRouter() {
+  function handleRoute() {
+    const path = window.location.pathname;
+    if (path.startsWith('/@')) {  // e.g., /@username
+      const username = path.substring(2);  // Remove '/@'
+      if (username) {
+        showProfilePage(username);
+      } else {
+        showFeed();  // Fallback to feed
+      }
+    } else {
+      showFeed();  // Default to main feed
+    }
+  }
+
+  // Listen for URL changes
+  window.addEventListener('popstate', handleRoute);
+  handleRoute();  // Initial load
+}
+
+// Navigate to profile URL without reload
+function navigateToProfile(username) {
+  const url = `/@${username}`;
+  history.pushState({ route: 'profile' }, '', url);
+  showProfilePage(username);
+}
+
+// Show full profile page
+async function showProfilePage(displayName) {
+  try {
+    console.log(`Rendering profile page for displayName: ${displayName}`);
+    const userData = await getUserByUsername(displayName);
+    currentRoute = `/@${displayName.toLowerCase().replace(/\s+/g, '')}`;
+
+    // Hide main content, show profile
+    document.getElementById('main-content').classList.add('hidden');
+    const profileContainer = document.getElementById('profilePage') || createProfilePage();
+    profileContainer.classList.remove('hidden');
+
+    // Render profile header with avatar beside username
+    const headerEl = profileContainer.querySelector('.profile-header');
+    headerEl.innerHTML = `
+      <div class="profile-header-inner">
+        <div class="user-avatar initials">${getInitials(userData.username || "Anonym")}</div>
+        <h1>@${userData.username}</h1>
+      </div>
+      <div class="profile-stats">
+        <div>Total Threads: ${userData.totalThreads}</div>
+        <div>Total Upvotes: ${userData.totalUpvotes}</div>
+        <div>School: ${userData.school}</div>
+      </div>
+      <button id="backToFeed" class="btn btn-primary">← Back to Feed</button>
+    `;
+
+    // Render threads list using getThread
+    const threadsContainer = profileContainer.querySelector('.profile-threads');
+    threadsContainer.innerHTML = userData.totalThreads === 0 ? "<p>Ingen tråder ennå</p>" : '';
+    userData.threads
+      .sort((a, b) => {
+        const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt).getTime();
+        const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt).getTime();
+        return bTime - aTime;
+      })
+      .forEach(thread => {
+        const commentCount = currentThreadsData.filter(d => d.parentId === thread.id).length;
+        const threadEl = getThread(thread, currentUser, threadsContainer, commentCount);
+        threadsContainer.appendChild(threadEl);
+      });
+
+    // Back button
+    document.getElementById('backToFeed').addEventListener('click', showFeed);
+
+    showToast({ type: 'success', title: 'Profile Loaded', message: `Viewing @${userData.username}'s profile`, duration: 2000 });
+    document.title = `@${userData.username} - SkienThreads`;
+  } catch (error) {
+    console.error(`Failed to load profile for ${displayName}:`, error);
+    showToast({ type: 'error', title: 'Not Found', message: `User @${displayName} not found`, duration: 3000 });
+    showFeed();
+  }
+}
+
+// Hide profile, show feed
+function showFeed() {
+  currentRoute = '/';
+  history.pushState({ route: 'feed' }, '', '/');
+  document.getElementById('profilePage')?.classList.add('hidden');
+  document.getElementById('main-content').classList.remove('hidden');
+  applySorting(schoolFilter, currentUser, document.getElementById('Threads'));  // Refresh feed
+}
+
+// Create profile page DOM (call once)
+function createProfilePage() {
+  const profileDiv = document.createElement('div');
+  profileDiv.id = 'profilePage';
+  profileDiv.classList.add('profile-page', 'hidden');
+  profileDiv.innerHTML = `
+    <div class="profile-header"></div>
+    <div class="profile-threads"></div>
+  `;
+  document.body.insertBefore(profileDiv, document.getElementById('main-content'));
+  return profileDiv;
+}
+logo = document.getElementById("logo");
+logo.style.cursor = "pointer";
+logo.addEventListener("click", () => {
+  if (currentRoute !== '/') {
+    showFeed();
   }
 });
