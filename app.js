@@ -1558,32 +1558,36 @@ function displayNotifications(notifications) {
 
 function updateNotificationBadge(notifications) {
   const badge = document.getElementById("notificationBadge");
+  if (!badge) return;
+  
   const unreadCount = notifications.filter(n => !n.read).length;
   
   if (unreadCount > 0) {
     badge.textContent = unreadCount > 99 ? "99+" : unreadCount;
     badge.classList.remove("hidden");
     
-    // Ensure badge styling is applied
-    badge.style.backgroundColor = "#dc3545";
-    badge.style.color = "white";
-    badge.style.borderRadius = "50%";
-    badge.style.padding = "2px 6px";
-    badge.style.fontSize = "0.65rem";
-    badge.style.fontWeight = "bold";
-    badge.style.position = "absolute";
-    badge.style.top = "-8px";
-    badge.style.right = "-8px";
-    badge.style.minWidth = "20px";
-    badge.style.textAlign = "center";
-    badge.style.lineHeight = "1";
-    badge.style.zIndex = "10";
+    // Apply consistent styling
     badge.style.display = "flex";
     badge.style.alignItems = "center";
     badge.style.justifyContent = "center";
+    badge.style.backgroundColor = "#dc3545";
+    badge.style.color = "white";
+    badge.style.borderRadius = "50%";
+    badge.style.fontSize = "0.65rem";
+    badge.style.fontWeight = "bold";
+    badge.style.position = "absolute";
+    badge.style.top = "-6px";
+    badge.style.right = "-6px";
+    badge.style.width = "20px";
+    badge.style.height = "20px";
+    badge.style.minWidth = "20px";
+    badge.style.lineHeight = "1";
+    badge.style.padding = "0";
+    badge.style.zIndex = "10";
   } else {
     badge.textContent = "";
     badge.classList.add("hidden");
+    badge.style.display = "none";
   }
   
   // Also sync mobile badge if it exists
@@ -1592,10 +1596,29 @@ function updateNotificationBadge(notifications) {
     if (unreadCount > 0) {
       mobileBadge.textContent = unreadCount > 99 ? "99+" : unreadCount;
       mobileBadge.classList.remove("hidden");
+      
+      // Same styling
       mobileBadge.style.display = "flex";
+      mobileBadge.style.alignItems = "center";
+      mobileBadge.style.justifyContent = "center";
+      mobileBadge.style.backgroundColor = "#dc3545";
+      mobileBadge.style.color = "white";
+      mobileBadge.style.borderRadius = "50%";
+      mobileBadge.style.fontSize = "0.65rem";
+      mobileBadge.style.fontWeight = "bold";
+      mobileBadge.style.position = "absolute";
+      mobileBadge.style.top = "-6px";
+      mobileBadge.style.right = "-6px";
+      mobileBadge.style.width = "20px";
+      mobileBadge.style.height = "20px";
+      mobileBadge.style.minWidth = "20px";
+      mobileBadge.style.lineHeight = "1";
+      mobileBadge.style.padding = "0";
+      mobileBadge.style.zIndex = "10";
     } else {
       mobileBadge.textContent = "";
       mobileBadge.classList.add("hidden");
+      mobileBadge.style.display = "none";
     }
   }
 }
@@ -1619,6 +1642,7 @@ function showAdminPanel() {
       <button id="view-users">Vis brukere</button>
       <button id="view-reports">Vis rapporter</button>
       <button id="logout-users">Logg ut alle brukere</button>
+      <button id="view-banned">Vis bannede brukere</button>
     </div>
     <div class="listdiv"></div>
   `;
@@ -1633,21 +1657,210 @@ function showAdminPanel() {
   panel.addEventListener("click", (event) => event.stopPropagation());
 
   document.getElementById("view-users").addEventListener("click", async () => {
-    const listdiv = panel.querySelector(".listdiv");
-    listdiv.innerHTML = "";
-    try {
-      const users = await hentDokumenter("users");
-      users.forEach(user => {
-        const temp = document.createElement("div");
-        temp.classList.add("user-entry");
-        temp.textContent = user.email || JSON.stringify(user);
-        listdiv.appendChild(temp);
+  const listdiv = panel.querySelector(".listdiv");
+  listdiv.innerHTML = "";
+  listdiv.style.cssText = `
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+  `;
+  
+  try {
+    const users = await hentDokumenter("users");
+    users.forEach(user => {
+      const temp = document.createElement("div");
+      temp.classList.add("user-entry");
+      temp.style.cssText = `
+        padding: 12px;
+        margin-bottom: 10px;
+        background: #ffffff;
+        border-radius: 6px;
+        border-left: 4px solid #007bff;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      `;
+      
+      const emailText = user.email || "No email";
+      const idText = user.id || user.uid || "No ID";
+      const displayName = user.displayName || "No display name";
+      
+      // Create content wrapper
+      const contentDiv = document.createElement("div");
+      contentDiv.style.cssText = `
+        flex: 1;
+      `;
+      contentDiv.innerHTML = `
+        <div style="font-weight: 600; margin-bottom: 4px; color: #1a1a1a;">${displayName}</div>
+        <div style="font-size: 0.9rem; color: #333; margin-bottom: 4px;">${emailText}</div>
+        <div style="font-size: 0.9rem; color: #333;">ID: <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; color: #000; font-family: monospace;">${idText}</code></div>
+      `;
+      
+      // Create ban button
+      const banBtn = document.createElement("button");
+      banBtn.style.cssText = `
+        padding: 6px 12px;
+        background-color: #dc3545;
+        color: #ffffff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        transition: background-color 0.2s ease;
+        align-self: flex-start;
+      `;
+      banBtn.textContent = "Ban User";
+      
+      banBtn.addEventListener("mouseover", () => {
+        banBtn.style.backgroundColor = "#c82333";
       });
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      listdiv.innerHTML = "<div>Feil ved lasting av brukere</div>";
+      
+      banBtn.addEventListener("mouseout", () => {
+        banBtn.style.backgroundColor = "#dc3545";
+      });
+      
+      banBtn.addEventListener("click", async () => {
+        if (confirm(`Ban user with ID: ${idText}?`)) {
+          try {
+            await leggTilDokument("bans", {
+              userId: idText,
+              bannedAt: new Date(),
+              reason: "Banned from admin panel"
+            });
+            showToast({
+              type: "success",
+              title: "Success",
+              message: `User ${emailText} has been banned!`,
+              duration: 3000
+            });
+            temp.remove();
+          } catch (error) {
+            console.error("Error banning user:", error);
+            showToast({
+              type: "error",
+              title: "Error",
+              message: `Could not ban user: ${error.message}`,
+              duration: 3000
+            });
+          }
+        }
+      });
+      
+      temp.appendChild(contentDiv);
+      temp.appendChild(banBtn);
+      listdiv.appendChild(temp);
+    });
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    listdiv.innerHTML = "<div style='color: #dc3545; padding: 10px;'>Feil ved lasting av brukere</div>";
+  }
+});
+
+document.getElementById("view-banned").addEventListener("click", async () => {
+  const listdiv = panel.querySelector(".listdiv");
+  listdiv.innerHTML = "";
+  listdiv.style.cssText = `
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+  `;
+  
+  try {
+    const bans = await hentDokumenter("bans");
+    
+    if (bans.length === 0) {
+      listdiv.innerHTML = "<div style='color: #10b981; padding: 10px; text-align: center;'>Ingen bannede brukere</div>";
+      return;
     }
-  });
+    
+    bans.forEach(ban => {
+      const temp = document.createElement("div");
+      temp.classList.add("banned-user-entry");
+      temp.style.cssText = `
+        padding: 12px;
+        margin-bottom: 10px;
+        background: #ffffff;
+        border-radius: 6px;
+        border-left: 4px solid #dc3545;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      `;
+      
+      const banReason = ban.reason || "No reason provided";
+      const bannedAt = ban.bannedAt ? new Date(ban.bannedAt.toDate ? ban.bannedAt.toDate() : ban.bannedAt).toLocaleDateString() : "Unknown date";
+      const userId = ban.userId || ban.id || "No ID";
+      const displayName = ban.displayName || "Unknown user";
+      
+      // Create content wrapper
+      const contentDiv = document.createElement("div");
+      contentDiv.style.cssText = `
+        flex: 1;
+      `;
+      contentDiv.innerHTML = `
+        <div style="font-weight: 600; margin-bottom: 4px; color: #1a1a1a;">${displayName}</div>
+        <div style="font-size: 0.9rem; color: #333; margin-bottom: 4px;">ID: <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; color: #000; font-family: monospace;">${userId}</code></div>
+        <div style="font-size: 0.9rem; color: #333; margin-bottom: 4px;">Reason: <span style="font-weight: 500;">${banReason}</span></div>
+        <div style="font-size: 0.85rem; color: #666;">Banned: ${bannedAt}</div>
+      `;
+      
+      // Create unban button
+      const unbanBtn = document.createElement("button");
+      unbanBtn.style.cssText = `
+        padding: 6px 12px;
+        background-color: #10b981;
+        color: #ffffff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        transition: background-color 0.2s ease;
+        align-self: flex-start;
+      `;
+      unbanBtn.textContent = "Unban User";
+      
+      unbanBtn.addEventListener("mouseover", () => {
+        unbanBtn.style.backgroundColor = "#059669";
+      });
+      
+      unbanBtn.addEventListener("mouseout", () => {
+        unbanBtn.style.backgroundColor = "#10b981";
+      });
+      
+      unbanBtn.addEventListener("click", async () => {
+        if (confirm(`Unban user with ID: ${userId}?`)) {
+          try {
+            await slettDokument("bans", ban.id);
+            showToast({
+              type: "success",
+              title: "Success",
+              message: `User ${userId} has been unbanned!`,
+              duration: 3000
+            });
+            temp.remove();
+          } catch (error) {
+            console.error("Error unbanning user:", error);
+            showToast({
+              type: "error",
+              title: "Error",
+              message: `Could not unban user: ${error.message}`,
+              duration: 3000
+            });
+          }
+        }
+      });
+      
+      temp.appendChild(contentDiv);
+      temp.appendChild(unbanBtn);
+      listdiv.appendChild(temp);
+    });
+  } catch (error) {
+    console.error("Error fetching banned users:", error);
+    listdiv.innerHTML = "<div style='color: #dc3545; padding: 10px;'>Feil ved lasting av bannede brukere</div>";
+  }
+});
 
   document.getElementById("view-reports").addEventListener("click", async () => {
     const listdiv = panel.querySelector(".listdiv");

@@ -2763,16 +2763,54 @@ body {
   }
 }
 
+
+/* ============================================ */
+/* NOTIFICATION BUTTON & BADGE - FIXED */
+/* Remove ALL other .notification-badge rules and use only this */
+/* ============================================ */
+
+.notification-btn {
+  position: relative;
+  background: none;
+  border: none;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.notification-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* MASTER NOTIFICATION BADGE RULE - THIS IS THE ONLY ONE NEEDED */
 .notification-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
   background-color: #dc3545;
   color: white;
+  font-size: 0.65rem;
+  font-weight: bold;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  padding: 4px 8px;
-  font-size: 0.75rem;
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  min-width: 20px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
   z-index: 10;
+  text-align: center;
+}
+
+.notification-badge.hidden {
+  display: none !important;
 }
