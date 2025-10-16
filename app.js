@@ -373,15 +373,42 @@ function applySorting(selectedSchool, user, container) {
     baseFiltered = baseFiltered.filter(thread => thread?.school === selectedSchool);
   }
 
- const sortFn = (a, b) => {
+const sortFn = (a, b) => {
   if (sortThreadsBy === "recent") {
     const aMillis = a?.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt).getTime();
     const bMillis = b?.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt).getTime();
     return bMillis - aMillis;
   } else if (sortThreadsBy === "popular") {
-    const aScore = (a.upvotes?.length || 0) - (a.downvotes?.length || 0);
-    const bScore = (b.upvotes?.length || 0) - (b.downvotes?.length || 0);
-    return bScore - aScore; // Fixed from bScore - bScore
+    const aNetVotes = (a.upvotes?.length || 0) - (a.downvotes?.length || 0);
+    const bNetVotes = (b.upvotes?.length || 0) - (b.downvotes?.length || 0);
+    const aPollVotes = a.poll?.votedBy?.length || 0;
+    const bPollVotes = b.poll?.votedBy?.length || 0;
+    const aComments = currentThreadsData.filter(d => d.parentId === a.id).length;
+    const bComments = currentThreadsData.filter(d => d.parentId === b.id).length;
+    const aPollDiff = aPollVotes > aNetVotes ? aPollVotes - aNetVotes : 0;
+    const bPollDiff = bPollVotes > bNetVotes ? bPollVotes - bNetVotes : 0;
+    const aScore = aNetVotes + aPollVotes + aComments + aPollDiff;
+    const bScore = bNetVotes + bPollVotes + bComments + bPollDiff;
+    return bScore - aScore;
+  } else if (sortThreadsBy === "hot") {
+    const now = Date.now();
+    const aMillis = a?.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt).getTime();
+    const bMillis = b?.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt).getTime();
+    const aAgeHours = (now - aMillis) / (1000 * 60 * 60);
+    const bAgeHours = (now - bMillis) / (1000 * 60 * 60);
+    const aNetVotes = (a.upvotes?.length || 0) - (a.downvotes?.length || 0);
+    const bNetVotes = (b.upvotes?.length || 0) - (b.downvotes?.length || 0);
+    const aPollVotes = a.poll?.votedBy?.length || 0;
+    const bPollVotes = b.poll?.votedBy?.length || 0;
+    const aComments = currentThreadsData.filter(d => d.parentId === a.id).length;
+    const bComments = currentThreadsData.filter(d => d.parentId === b.id).length;
+    const aPollDiff = aPollVotes > aNetVotes ? aPollVotes - aNetVotes : 0;
+    const bPollDiff = bPollVotes > bNetVotes ? bPollVotes - bNetVotes : 0;
+    const aScore = aNetVotes + aPollVotes + aComments + aPollDiff;
+    const bScore = bNetVotes + bPollVotes + bComments + bPollDiff;
+    const aHotScore = aScore / (aAgeHours + 2);
+    const bHotScore = bScore / (bAgeHours + 2);
+    return bHotScore - aHotScore;
   }
   return 0;
 };
@@ -1370,6 +1397,7 @@ document.getElementById("popular").addEventListener("click", () => {
   sortThreadsBy = "popular";
   document.getElementById("nylig").classList.remove("active");
   document.getElementById("popular").classList.add("active");
+  document.getElementById("hot").classList.remove("active");
   applySorting(schoolFilter, currentUser, document.getElementById("Threads"));
 });
 
@@ -1377,6 +1405,15 @@ document.getElementById("nylig").addEventListener("click", () => {
   sortThreadsBy = "recent";
   document.getElementById("nylig").classList.add("active");
   document.getElementById("popular").classList.remove("active");
+  document.getElementById("hot").classList.remove("active");
+  applySorting(schoolFilter, currentUser, document.getElementById("Threads"));
+});
+
+document.getElementById("hot").addEventListener("click", () => {
+  sortThreadsBy = "hot";
+  document.getElementById("nylig").classList.remove("active");
+  document.getElementById("popular").classList.remove("active");
+  document.getElementById("hot").classList.add("active");
   applySorting(schoolFilter, currentUser, document.getElementById("Threads"));
 });
 
@@ -1991,6 +2028,11 @@ window.addEventListener("DOMContentLoaded", () => {
   showMainPage();
   setupMentionSupport()
 
+    // Add these new calls:
+  initMobileSidebar();
+  initCompactInfoRow();
+  updateCompactInfo();
+
   const pollToggle = document.getElementById("poll-toggle");
   if (pollToggle) {
     pollToggle.addEventListener("change", (e) => {
@@ -2013,6 +2055,18 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+// Update these existing functions to also update compact info:
+const originalUpdateTrendingHashtags = updateTrendingHashtags;
+updateTrendingHashtags = function() {
+  originalUpdateTrendingHashtags();
+  updateCompactInfo();
+};
+
+const originalUpdateOnlineUsers = updateOnlineUsers;
+updateOnlineUsers = function() {
+  originalUpdateOnlineUsers();
+  updateCompactInfo();
+};
   // logout button in pofile dropdown menu
   const logoutBtn = document.getElementById('log');
   if (logoutBtn) {
@@ -2182,3 +2236,273 @@ logo.addEventListener("click", () => {
     showFeed();
   }
 });
+
+// ============================================
+// MOBILE OPTIMIZATION - ADD TO app.js
+// Add these functions and event listeners
+// ============================================
+
+// Create mobile sidebar drawer (call this in DOMContentLoaded)
+function initMobileSidebar() {
+  // Create drawer overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'drawer-overlay';
+  overlay.id = 'drawerOverlay';
+  document.body.appendChild(overlay);
+
+  // Create mobile sidebar drawer
+  const drawer = document.createElement('div');
+  drawer.className = 'mobile-sidebar-drawer';
+  drawer.id = 'mobileSidebar';
+  drawer.innerHTML = `
+    <button class="drawer-close" id="closeDrawer">×</button>
+    <h3 style="margin-bottom: 16px; color: var(--text-primary);">Meny</h3>
+    
+    <!-- School Filter in Drawer -->
+    <div style="margin-bottom: 20px;">
+      <label style="font-weight: 600; margin-bottom: 8px; display: block; font-size: 14px;">Filtrer etter skole</label>
+      <select class="school-selector" id="mobileSchoolFilter" style="width: 100%;">
+        <option>Alle skoler</option>
+        <option>Skien VGS</option>
+        <option>Skogmo VGS</option>
+        <option>Hjalmar VGS</option>
+      </select>
+    </div>
+
+    <!-- Trending in Drawer -->
+    <div class="sidebar-card" style="margin-bottom: 20px;">
+      <h3 class="sidebar-title">Populært nå</h3>
+      <div id="drawerTrending"></div>
+    </div>
+
+    <!-- Schools in Drawer -->
+    <div class="sidebar-card">
+      <h3 class="sidebar-title">Aktive skoler</h3>
+      <div id="drawerSchools"></div>
+    </div>
+  `;
+  document.body.appendChild(drawer);
+
+  // Hamburger button (add to navbar)
+  const hamburger = document.createElement('button');
+  hamburger.className = 'hamburger-btn';
+  hamburger.id = 'hamburgerBtn';
+  hamburger.innerHTML = '☰';
+  hamburger.setAttribute('aria-label', 'Åpne meny');
+  
+  const navbar = document.querySelector('.nav-container');
+  navbar.insertBefore(hamburger, navbar.firstChild);
+
+  // Create mobile control row wrapper for hamburger + nav-actions
+  const controlRow = document.createElement('div');
+  controlRow.className = 'mobile-control-row';
+  
+  // Move hamburger and nav-actions into control row
+  const navActions = navbar.querySelector('.nav-actions');
+  controlRow.appendChild(hamburger);
+  controlRow.appendChild(navActions);
+  
+  // Insert control row after logo
+  const logo = navbar.querySelector('.logo');
+  logo.after(controlRow);
+
+  // Event listeners
+  hamburger.addEventListener('click', openDrawer);
+  overlay.addEventListener('click', closeDrawer);
+  document.getElementById('closeDrawer').addEventListener('click', closeDrawer);
+
+  // Sync mobile school filter with main filter
+  document.getElementById('mobileSchoolFilter').addEventListener('change', (e) => {
+    document.getElementById('schoolFilter').value = e.target.value;
+    schoolFilter = e.target.value;
+    applySorting(schoolFilter, currentUser, document.getElementById('Threads'));
+    closeDrawer();
+  });
+
+  // Make drawer hashtags clickable
+  setupDrawerHashtagListeners();
+}
+
+function setupDrawerHashtagListeners() {
+  const drawerTrending = document.getElementById('drawerTrending');
+  if (!drawerTrending) return;
+
+  // Use event delegation for dynamically added hashtags
+  drawerTrending.addEventListener('click', (e) => {
+    const trendingTopic = e.target.closest('.trending-topic');
+    if (!trendingTopic) return;
+
+    // Extract hashtag from text (remove #)
+    const hashtagText = trendingTopic.textContent.trim();
+    const tag = hashtagText.startsWith('#') ? hashtagText.substring(1) : hashtagText;
+
+    // Toggle hashtag filter
+    currentHashtag = currentHashtag === tag ? null : tag;
+
+    // Update UI to show selected state
+    updateDrawerHashtagHighlight(tag);
+
+    // Apply filter
+    applySorting(schoolFilter, currentUser, document.getElementById('Threads'));
+
+    // Update compact info row
+    updateCompactInfo();
+
+    // Close drawer after selection
+    closeDrawer();
+  });
+}
+
+function updateDrawerHashtagHighlight(selectedTag) {
+  const drawerTrending = document.getElementById('drawerTrending');
+  if (!drawerTrending) return;
+
+  drawerTrending.querySelectorAll('.trending-topic').forEach(topic => {
+    const topicText = topic.textContent.trim();
+    const tag = topicText.startsWith('#') ? topicText.substring(1) : topicText;
+    
+    if (tag === selectedTag && currentHashtag === selectedTag) {
+      topic.style.color = '#007bff';
+      topic.style.fontWeight = 'bold';
+    } else {
+      topic.style.color = '';
+      topic.style.fontWeight = '';
+    }
+  });
+}
+
+function openDrawer() {
+  const drawer = document.getElementById('mobileSidebar');
+  const overlay = document.getElementById('drawerOverlay');
+  
+  drawer.classList.add('open');
+  overlay.classList.add('visible');
+  document.body.style.overflow = 'hidden'; // Prevent background scrolling
+  
+  // Update drawer content
+  updateDrawerContent();
+}
+
+function closeDrawer() {
+  const drawer = document.getElementById('mobileSidebar');
+  const overlay = document.getElementById('drawerOverlay');
+  
+  drawer.classList.remove('open');
+  overlay.classList.remove('visible');
+  document.body.style.overflow = ''; // Restore scrolling
+}
+
+function updateDrawerContent() {
+  // Update trending in drawer - copy content and preserve functionality
+  const drawerTrending = document.getElementById('drawerTrending');
+  const mainTrending = document.getElementById('popular-hashtags');
+  if (mainTrending && drawerTrending) {
+    drawerTrending.innerHTML = '';
+    const trendingItems = mainTrending.querySelectorAll('.trending-item');
+    trendingItems.forEach(item => {
+      const clonedItem = item.cloneNode(true);
+      drawerTrending.appendChild(clonedItem);
+    });
+    
+    // Update highlighting based on current selection
+    if (currentHashtag) {
+      updateDrawerHashtagHighlight(currentHashtag);
+    }
+  }
+
+  // Update schools in drawer
+  const drawerSchools = document.getElementById('drawerSchools');
+  const mainSchools = document.getElementById('online-counter');
+  if (mainSchools && drawerSchools) {
+    drawerSchools.innerHTML = '';
+    const schoolItems = mainSchools.querySelectorAll('.school-info');
+    schoolItems.forEach(item => {
+      const clonedItem = item.cloneNode(true);
+      drawerSchools.appendChild(clonedItem);
+    });
+  }
+}
+
+// Create compact info row for mobile (call this in DOMContentLoaded)
+function initCompactInfoRow() {
+  const compactRow = document.createElement('div');
+  compactRow.className = 'compact-info-row';
+  compactRow.id = 'compactInfoRow';
+  compactRow.innerHTML = `
+    <div class="compact-section">
+      <div class="compact-title">🔥 Trending</div>
+      <div class="compact-hashtags" id="compactHashtags"></div>
+    </div>
+    <div class="compact-section">
+      <div class="compact-title">👥 Online nå</div>
+      <div class="compact-schools" id="compactSchools"></div>
+    </div>
+  `;
+  
+  const feedSection = document.querySelector('.feed-section');
+  feedSection.insertBefore(compactRow, feedSection.firstChild);
+}
+
+function updateCompactInfo() {
+  // Update compact hashtags
+  const compactHashtags = document.getElementById('compactHashtags');
+  if (compactHashtags) {
+    overvåkTrendingHashtags((trending) => {
+      compactHashtags.innerHTML = '';
+      trending.slice(0, 3).forEach(([tag, count]) => {
+        const hashtagEl = document.createElement('div');
+        hashtagEl.className = 'compact-hashtag';
+        hashtagEl.textContent = `#${tag}`;
+        hashtagEl.style.backgroundColor = tag === currentHashtag ? 'var(--primary-color)' : '';
+        hashtagEl.style.color = tag === currentHashtag ? 'white' : '';
+        hashtagEl.addEventListener('click', () => {
+          currentHashtag = currentHashtag === tag ? null : tag;
+          applySorting(schoolFilter, currentUser, document.getElementById('Threads'));
+          updateCompactInfo(); // Refresh highlighting
+          
+          // Also update main sidebar hashtag highlighting
+          document.querySelectorAll('.trending-topic').forEach(t => {
+            const tTag = t.textContent.substring(1);
+            t.style.color = tTag === currentHashtag ? '#007bff' : '';
+            t.style.fontWeight = tTag === currentHashtag ? 'bold' : '';
+          });
+        });
+        compactHashtags.appendChild(hashtagEl);
+      });
+    });
+  }
+
+  // Update compact schools
+  const compactSchools = document.getElementById('compactSchools');
+  if (compactSchools) {
+    overvåkOnlineBrukere((onlineBySchool, error) => {
+      if (error) return;
+      compactSchools.innerHTML = '';
+      
+      const schools = ['Skien VGS', 'Skogmo VGS', 'Hjalmar VGS'];
+      schools.forEach(school => {
+        const count = onlineBySchool[school] || 0;
+        const schoolEl = document.createElement('div');
+        schoolEl.className = 'compact-school';
+        schoolEl.innerHTML = `
+          <span class="compact-school-name">${school.replace(' VGS', '')}</span>
+          <span class="compact-school-count">${count}</span>
+        `;
+        compactSchools.appendChild(schoolEl);
+      });
+    });
+  }
+}
+
+// Update these existing functions to also update compact info:
+const originalUpdateTrendingHashtags = updateTrendingHashtags;
+updateTrendingHashtags = function() {
+  originalUpdateTrendingHashtags();
+  updateCompactInfo();
+};
+
+const originalUpdateOnlineUsers = updateOnlineUsers;
+updateOnlineUsers = function() {
+  originalUpdateOnlineUsers();
+  updateCompactInfo();
+};

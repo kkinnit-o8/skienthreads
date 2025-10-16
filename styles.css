@@ -2391,3 +2391,340 @@ body {
   }
 }
 
+/* ============================================ */
+/* MOBILE OPTIMIZATION - REDDIT-STYLE LAYOUT */
+/* Add these styles to your styles.css */
+/* ============================================ */
+
+/* ============================================ */
+/* MOBILE OPTIMIZATION - REDDIT-STYLE LAYOUT */
+/* Add these styles to your styles.css */
+/* ============================================ */
+
+/* Hamburger Menu Button (Mobile Only) */
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px;
+  color: var(--text-primary);
+  transition: transform 0.2s ease;
+}
+
+.hamburger-btn:active {
+  transform: scale(0.95);
+}
+
+/* Mobile Sidebar Drawer */
+.mobile-sidebar-drawer {
+  position: fixed;
+  top: 0;
+  left: -100%;
+  width: 80%;
+  max-width: 300px;
+  height: 100vh;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  z-index: 9999;
+  transition: left 0.3s ease;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.mobile-sidebar-drawer.open {
+  left: 0;
+}
+
+/* Overlay for drawer */
+.drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9998;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.drawer-overlay.visible {
+  display: block;
+  opacity: 1;
+}
+
+/* Close button in drawer */
+.drawer-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 8px;
+}
+
+/* Compact info row (hashtags + online users) */
+.compact-info-row {
+  display: none;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+}
+
+.compact-section {
+  margin-bottom: 12px;
+}
+
+.compact-section:last-child {
+  margin-bottom: 0;
+}
+
+.compact-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.compact-hashtags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.compact-hashtag {
+  background: var(--primary-light);
+  color: var(--primary-color);
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.compact-hashtag:active {
+  transform: scale(0.95);
+}
+
+.compact-schools {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.compact-school {
+  flex: 1;
+  text-align: center;
+  padding: 6px;
+  background: var(--background);
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.compact-school-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.compact-school-count {
+  color: var(--success);
+  font-weight: 600;
+}
+
+/* ============================================ */
+/* MOBILE RESPONSIVE (640px and below) */
+/* ============================================ */
+@media (max-width: 640px) {
+  /* Show hamburger menu */
+  .hamburger-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Adjust navbar for mobile */
+  .nav-container {
+    padding: 8px 12px;
+  }
+
+  /* Hide desktop sidebar */
+  .sidebar {
+    display: none !important;
+  }
+
+  /* Show compact info row on mobile */
+  .compact-info-row {
+    display: block;
+  }
+
+  /* Make main container single column with more space */
+  .main-container {
+    grid-template-columns: 1fr;
+    padding: 0 12px;
+    margin: 12px auto;
+    gap: 0;
+  }
+
+  /* Expand feed section to full width */
+  .feed-section {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* Larger thread cards on mobile */
+  .thread-card {
+    padding: 16px;
+    margin-bottom: 12px;
+    font-size: 15px;
+  }
+
+  .thread-content {
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* Larger avatars */
+  .user-avatar {
+    width: 48px;
+    height: 48px;
+    font-size: 16px;
+  }
+
+  /* Better spacing for thread actions */
+  .thread-actions {
+    padding-top: 14px;
+    gap: 16px;
+  }
+
+  .action-btn {
+    font-size: 15px;
+    padding: 8px 14px;
+  }
+
+  /* Improve create thread box */
+  .create-thread {
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+
+  .create-thread textarea {
+    font-size: 15px;
+    min-height: 100px;
+  }
+
+  /* Hide school selector from navbar on mobile */
+  .nav-actions .school-selector {
+    display: none;
+  }
+
+  /* Adjust notification and profile buttons */
+  .notification-btn,
+  .profile-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Full width notification panel on mobile */
+  .notification-panel {
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0;
+    top: 56px;
+    max-height: calc(100vh - 56px);
+  }
+
+  /* Remove max-height from threads container */
+  .Threads {
+    max-height: none;
+  }
+
+  /* Better comment nesting on mobile */
+  .nested-comment {
+    margin-left: 12px;
+    padding-left: 12px;
+  }
+
+  /* Optimize navbar layout - Logo on top, controls below */
+  .nav-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+  }
+
+  /* Logo centered at the top */
+  .logo {
+    order: 1;
+    text-align: center;
+    font-size: 20px;
+    width: 100%;
+  }
+
+  /* Control row: hamburger, notification, profile */
+  .mobile-control-row {
+    order: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0 8px;
+  }
+
+  .hamburger-btn {
+    order: 1;
+  }
+
+  .nav-actions {
+    order: 2;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    width: auto;
+  }
+
+  /* Feed tabs full width at bottom */
+  .feed-tabs {
+    order: 3;
+    width: 100%;
+    margin-top: 4px;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 380px) {
+  .thread-card {
+    padding: 12px;
+  }
+
+  .create-thread {
+    padding: 12px;
+  }
+
+  .compact-hashtag {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .compact-school {
+    font-size: 10px;
+    padding: 4px;
+  }
+}
