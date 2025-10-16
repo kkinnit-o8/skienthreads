@@ -2096,7 +2096,7 @@ function createProfilePage() {
   document.body.insertBefore(profileDiv, document.getElementById('main-content'));
   return profileDiv;
 }
-logo = document.getElementById("logo");
+const logo = document.getElementById("logo");
 logo.style.cursor = "pointer";
 logo.addEventListener("click", () => {
   if (currentRoute !== '/') {
