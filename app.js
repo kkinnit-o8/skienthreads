@@ -2291,24 +2291,66 @@ function initMobileSidebar() {
   hamburger.setAttribute('aria-label', 'Åpne meny');
   
   const navbar = document.querySelector('.nav-container');
-  navbar.insertBefore(hamburger, navbar.firstChild);
-
+  
   // Create mobile control row wrapper for hamburger + nav-actions
   const controlRow = document.createElement('div');
   controlRow.className = 'mobile-control-row';
   
-  // Move hamburger and nav-actions into control row
+  // Clone nav-actions for mobile (keep original for desktop)
   const navActions = navbar.querySelector('.nav-actions');
+  const navActionsClone = navActions.cloneNode(true);
+  
   controlRow.appendChild(hamburger);
-  controlRow.appendChild(navActions);
+  controlRow.appendChild(navActionsClone);
   
   // Insert control row after logo
   const logo = navbar.querySelector('.logo');
   logo.after(controlRow);
+  
+  // Sync cloned elements with originals
+  syncMobileNavActions(navActions, navActionsClone);
+}
+
+function syncMobileNavActions(original, clone) {
+  // Sync notification button
+  const originalNotif = original.querySelector('#notificationBtn');
+  const cloneNotif = clone.querySelector('#notificationBtn');
+  
+  if (originalNotif && cloneNotif) {
+    cloneNotif.addEventListener('click', (e) => {
+      e.stopPropagation();
+      originalNotif.click();
+    });
+  }
+  
+  // Sync profile button
+  const originalProfile = original.querySelector('.profile-btn');
+  const cloneProfile = clone.querySelector('.profile-btn');
+  
+  if (originalProfile && cloneProfile) {
+    cloneProfile.addEventListener('click', (e) => {
+      e.stopPropagation();
+      originalProfile.click();
+    });
+    
+    // Copy initials
+    cloneProfile.textContent = originalProfile.textContent;
+  }
+  
+  // Update cloned profile when original updates
+  const observer = new MutationObserver(() => {
+    if (cloneProfile && originalProfile) {
+      cloneProfile.textContent = originalProfile.textContent;
+    }
+  });
+  
+  if (originalProfile) {
+    observer.observe(originalProfile, { childList: true, characterData: true, subtree: true });
+  }
 
   // Event listeners
-  hamburger.addEventListener('click', openDrawer);
-  overlay.addEventListener('click', closeDrawer);
+  document.getElementById("hamburgerBtn").addEventListener('click', openDrawer);
+  document.getElementById("drawerOverlay").addEventListener('click', closeDrawer);
   document.getElementById('closeDrawer').addEventListener('click', closeDrawer);
 
   // Sync mobile school filter with main filter
@@ -2506,3 +2548,4 @@ updateOnlineUsers = function() {
   originalUpdateOnlineUsers();
   updateCompactInfo();
 };
+

@@ -859,6 +859,8 @@ body {
   }
 }
 
+
+
 /* Mobile: Adjust navigation and layout */
 @media (max-width: 640px) {
   /* Auth screens take more space on mobile */
@@ -2390,12 +2392,6 @@ body {
     padding: 6px 12px;
   }
 }
-
-/* ============================================ */
-/* MOBILE OPTIMIZATION - REDDIT-STYLE LAYOUT */
-/* Add these styles to your styles.css */
-/* ============================================ */
-
 /* ============================================ */
 /* MOBILE OPTIMIZATION - REDDIT-STYLE LAYOUT */
 /* Add these styles to your styles.css */
@@ -2546,6 +2542,16 @@ body {
   font-weight: 600;
 }
 
+/* Mobile control row wrapper */
+.mobile-control-row {
+  display: none;
+}
+
+/* Keep original nav-actions visible on desktop */
+.nav-actions {
+  display: flex;
+}
+
 /* ============================================ */
 /* MOBILE RESPONSIVE (640px and below) */
 /* ============================================ */
@@ -2555,6 +2561,16 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+
+  /* Show mobile control row */
+  .mobile-control-row {
+    display: flex;
+  }
+
+  /* Hide original nav-actions on mobile (use cloned version in control row) */
+  .nav-container > .nav-actions {
+    display: none;
   }
 
   /* Adjust navbar for mobile */
