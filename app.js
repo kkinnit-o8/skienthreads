@@ -1256,7 +1256,7 @@ function updateTrendingHashtags() {
       item.classList.add("trending-item");
       item.innerHTML = `
         <div class="trending-topic" style="${tag === currentHashtag ? 'color: #007bff; font-weight: bold;' : ''}">#${tag}</div>
-        <div class="trending-count">${count} tråder</div>
+        <div class="trending-count">${count} upvotes</div>
       `;
       item.querySelector(".trending-topic").addEventListener("click", () => {
         currentHashtag = currentHashtag === tag ? null : tag;

@@ -254,27 +254,28 @@ export function overvåkOnlineBrukere(callback) {
 function overvåkTrendingHashtags(callback) {
   const threadsRef = collection(db, "Threads");
   return onSnapshot(threadsRef, (snapshot) => {
-    const hashtagCounts = {};
+    const hashtagUpvotes = {}; // Ny: Mapper hashtag til total upvotes
 
     snapshot.docs.forEach(doc => {
       const data = doc.data();
+      const upvotesCount = data.upvotes?.length || 0; // Antall upvotes på denne tråden
       if (Array.isArray(data.hashtags)) {
         data.hashtags.forEach(tag => {
-          const normalized = tag.trim();
+          const normalized = tag.trim().toLowerCase(); // Normaliser (lowercase, trim)
           if (normalized) {
-            if (!hashtagCounts[normalized]) hashtagCounts[normalized] = 0;
-            hashtagCounts[normalized]++;
+            // Legg til upvotes for denne tråden til hashtaggen
+            hashtagUpvotes[normalized] = (hashtagUpvotes[normalized] || 0) + upvotesCount;
           }
         });
       }
     });
 
-    // Sort by most used
-    const sorted = Object.entries(hashtagCounts)
-      .sort((a, b) => b[1] - a[1]) // most popular first
-      .slice(0, 5); // top 5
+    // Sortér etter total upvotes (mest først), ta topp 5
+    const sorted = Object.entries(hashtagUpvotes)
+      .sort((a, b) => b[1] - a[1]) // Høyest total upvotes først
+      .slice(0, 5); // Topp 5 hashtags
 
-    callback(sorted); // e.g. [["MatteEksamen", 23], ["Høstferie", 19]]
+    callback(sorted); // Returnerer f.eks. [["#matte", 150], ["#eksamen", 120]] – tag og total upvotes
   });
 }
 
