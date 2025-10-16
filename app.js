@@ -1639,6 +1639,11 @@ function removeToast(toast) {
 // AUTH STATE MONITORING
 // ============================================
 
+// ============================================
+// NAVIGATION AND AUTH
+// ============================================
+
+// Update nav for auth (minimal: handles profile button creation/removal)
 function updateNavForAuth(user) {
   const navActions = document.querySelector(".nav-actions");
   let profileBtn = navActions.querySelector(".profile-btn");
@@ -1647,13 +1652,16 @@ function updateNavForAuth(user) {
   if (user) {
     if (!profileBtn) {
       profileBtn = document.createElement("button");
+      profileBtn.id = "profileBtn";
       profileBtn.className = "profile-btn initials";
-      navActions.appendChild(profileBtn);
+      profileBtn.setAttribute('aria-haspopup', 'true');
+      profileBtn.setAttribute('aria-expanded', 'false');
+      const profileWrapper = navActions.querySelector(".profile-wrapper") || navActions;
+      profileWrapper.appendChild(profileBtn);
     }
     if (loginBtn) loginBtn.remove();
     profileBtn.textContent = getInitials(user.displayName || "Bruker");
-    profileBtn.setAttribute('aria-haspopup', 'true');
-    profileBtn.setAttribute('aria-expanded', 'false');
+    attachProfileListener(profileBtn); // Attach listener
   } else {
     if (!loginBtn) {
       loginBtn = document.createElement("button");
@@ -1666,58 +1674,64 @@ function updateNavForAuth(user) {
   }
 }
 
-// Profile dropdown menu
+// Attach profile dropdown listener (minimal: toggle menu, outside click, keyboard)
+function attachProfileListener(profileBtn) {
+  const menu = document.getElementById("profileMenu");
+  if (!menu) return;
 
-(async function(){
-  const profileBtn = document.getElementById('profileBtn') || document.querySelector('.profile-btn');
-  const menu = document.getElementById('profileMenu');
-  if (!profileBtn) return;
+  // Clone to remove old listeners
+  const newBtn = profileBtn.cloneNode(true);
+  profileBtn.replaceWith(newBtn);
+  profileBtn = newBtn;
 
-  function openMenu(){
-    if (!menu) return;
-    menu.classList.remove('hidden');
-    profileBtn.setAttribute('aria-expanded','true');
-    menu.querySelector('.profile-menu-item')?.focus();
-  }
-  function closeMenu(){
-    if (!menu) return;
-    menu.classList.add('hidden');
-    profileBtn.setAttribute('aria-expanded','false');
-    profileBtn.focus();
-  }
+  const toggleMenu = (show) => {
+    menu.classList.toggle("hidden", !show);
+    profileBtn.setAttribute("aria-expanded", show ? "true" : "false");
+  };
 
-  profileBtn.addEventListener('click', async (e) => {
+  profileBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    if (!menu) {
-      // fallback behaviour when no dropdown exists
-      if (confirm('Vil du logge ut?')) {
-        try { await loggUt(); } catch(err) { console.error('Logout failed:', err); }
-        showLogin();
-      }
-      return;
-    }
-    // toggle menu
-    if (menu.classList.contains('hidden')) openMenu(); else closeMenu();
+    toggleMenu(menu.classList.contains("hidden"));
   });
 
-  // close when clicking outside
-  document.addEventListener('click', (e) => {
-    if (!menu) return;
-    if (!menu.classList.contains('hidden') && !profileBtn.contains(e.target) && !menu.contains(e.target)) {
-      closeMenu();
+  // Close on outside click
+  document.addEventListener("click", (e) => {
+    if (!menu.classList.contains("hidden") && !profileBtn.contains(e.target) && !menu.contains(e.target)) {
+      toggleMenu(false);
     }
-  });
+  }, { once: false });
 
-  // keyboard support
-  document.addEventListener('keydown', (e) => {
-    if (!menu) return;
-    if (e.key === 'Escape') closeMenu();
-    if ((e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') && document.activeElement === profileBtn) {
+  // Basic keyboard: Enter/Space to toggle, Esc to close
+  profileBtn.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      openMenu();
+      toggleMenu(menu.classList.contains("hidden"));
+    } else if (e.key === "Escape" && !menu.classList.contains("hidden")) {
+      toggleMenu(false);
     }
   });
-})();
+
+  // Attach logout listener to #log (clone to avoid duplicates)
+  const logoutBtn = menu.querySelector('#log');
+  if (logoutBtn) {
+    const newLogoutBtn = logoutBtn.cloneNode(true);
+    logoutBtn.replaceWith(newLogoutBtn);
+    newLogoutBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation(); // Prevent menu toggle
+      if (!confirm('Vil du logge ut?')) return;
+      try {
+        await loggUt();
+        showToast({ type: 'success', title: 'Logget ut', message: 'Du er nå logget ut.', duration: 2000 });
+        showLogin();
+        toggleMenu(false); // Close menu after logout
+      } catch (err) {
+        console.error('Logout failed:', err);
+        showToast({ type: 'error', title: 'Feil', message: 'Kunne ikke logge ut.', duration: 3000 });
+      }
+    });
+  }
+}
 
 function updateUIForAuth(user) {
   const postThreadForm = document.getElementById("post-thread");
@@ -1875,7 +1889,7 @@ function setupMentionSupport() {
 window.addEventListener("DOMContentLoaded", () => {
   showMainPage();
   sjekk();
-  setupMentionSupport()
+  setupMentionSupport();
 
   const pollToggle = document.getElementById("poll-toggle");
   if (pollToggle) {
@@ -1899,7 +1913,6 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // logout button in pofile dropdown menu
   const logoutBtn = document.getElementById('log');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async (e) => {

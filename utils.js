@@ -183,29 +183,31 @@ async function registrerBruker(email, password, displayName, school, schoolDomai
   return userCred.user;
 }
 
-// Vilkår må bli endret senere
+// Terms toggle functionality Real terms and condition and TOS has to be made.
+const showTerms = document.getElementById('show-terms');
+const termsText = document.getElementById('termsText');
 
-(function(){
-  const toggle = document.getElementById('show-terms');
-  const txt = document.getElementById('termsText');
+if (showTerms && termsText) {
+  showTerms.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent checkbox toggle or form submission
 
-  function toggleTerms(e){
-    // prevent any default/propagation to avoid toggling the checkbox
-    if (e && typeof e.preventDefault === 'function') e.preventDefault();
-    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-    if (!txt) return;
-    txt.classList.toggle('hidden');
-    if (!txt.classList.contains('hidden')) txt.scrollIntoView({behavior:'smooth', block:'center'});
-  }
+    const isHidden = termsText.classList.contains('hidden');
+    termsText.classList.toggle('hidden', !isHidden);
+    termsText.setAttribute('aria-hidden', isHidden); // Update accessibility
 
-  toggle?.addEventListener('click', toggleTerms);
-  // keyboard accessibility: Enter / Space
-  toggle?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ' || e.code === 'Space') {
-      toggleTerms(e);
+    // Optional: Change link text for better UX (e.g., "Skjul vilkår" when shown)
+    showTerms.textContent = isHidden ? 'Skjul vilkårene' : 'vilkårene';
+  });
+
+  // Also handle keyboard navigation (Enter/Space key)
+  showTerms.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      showTerms.click();
     }
   });
-})();
+}
 
 // 📌 Log in
 async function loggInn(email, password) {
