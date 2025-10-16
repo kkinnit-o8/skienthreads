@@ -876,66 +876,7 @@ if (data.content.length > maxLength) {
 // COMMENTS FUNCTIONALITY
 // ============================================
 
-function toggleCommentSection(threadId, user, container, isNested = false) {
-  const targetEl = isNested ? container : container.closest(".thread-card") || container;
-  let existing = targetEl.querySelector(".comments-section");
-  if (existing) {
-    if (existing.cleanup) existing.cleanup();
-    existing.remove();
-    return;
-  }
 
-  const commentsSection = document.createElement("div");
-  commentsSection.classList.add("comments-section");
-
-  const form = document.createElement("form");
-  form.classList.add("comment-form");
-
-  const inputContainer = document.createElement("div");
-  inputContainer.classList.add("comment-input-container");
-
-  const avatar = document.createElement("div");
-  avatar.classList.add("user-avatar", "small");
-  avatar.textContent = getInitials(user.displayName || "Bruker");
-
-  const textarea = document.createElement("textarea");
-  textarea.classList.add("comment-input");
-  textarea.placeholder = "Skriv en kommentar...";
-  textarea.required = true;
-
-  inputContainer.appendChild(avatar);
-  inputContainer.appendChild(textarea);
-
-  const formActions = document.createElement("div");
-  formActions.classList.add("comment-actions");
-
-  const submitBtn = document.createElement("button");
-  submitBtn.classList.add("btn", "btn-primary", "btn-small");
-  submitBtn.type = "submit";
-  submitBtn.textContent = "Kommenter";
-
-  formActions.appendChild(submitBtn);
-  form.appendChild(inputContainer);
-  form.appendChild(formActions);
-
-  const commentsList = document.createElement("div");
-  commentsList.classList.add("comments-list");
-
-  commentsSection.appendChild(form);
-  commentsSection.appendChild(commentsList);
-  targetEl.appendChild(commentsSection);
-
-  const cleanup = visKommentarerLive(threadId, commentsList, user, isNested);
-  commentsSection.cleanup = cleanup;
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const content = textarea.value.trim();
-    if (!content) return;
-    await post(content, null, threadId);
-    textarea.value = "";
-  });
-}
 
 function visKommentarerLive(parentId, commentsList, user, isNested = false) {
   const updateComments = (docs) => {
@@ -1019,6 +960,14 @@ function createCommentCard(comment, isNested, user) {
   const avatar = document.createElement("div");
   avatar.classList.add("user-avatar", "small");
   avatar.textContent = getInitials(comment.authorName || "Anonym");
+  avatar.style.cursor = "pointer"; // Make cursor a pointer to indicate it's clickable
+  
+  // ADD CLICK HANDLER TO AVATAR
+  avatar.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigateToProfile(comment.authorName);
+  });
 
   const userInfo = document.createElement("div");
   userInfo.classList.add("comment-user-info");
@@ -1026,6 +975,14 @@ function createCommentCard(comment, isNested, user) {
   const username = document.createElement("div");
   username.classList.add("comment-username");
   username.textContent = comment.authorName || "Anonym";
+  username.style.cursor = "pointer"; // Already clickable, but make it obvious
+  
+  // ADD CLICK HANDLER TO USERNAME (if not already there)
+  username.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigateToProfile(comment.authorName);
+  });
 
   const meta = document.createElement("div");
   meta.classList.add("comment-meta");
@@ -1148,6 +1105,104 @@ function createCommentCard(comment, isNested, user) {
   }
 
   return card;
+}
+
+// ============================================
+// OPTIONAL: ADD CHARACTER COUNTER IN COMMENT INPUT
+// ============================================
+
+// Add this to your toggleCommentSection() function right after creating the textarea:
+
+function toggleCommentSection(threadId, user, container, isNested = false) {
+  const targetEl = isNested ? container : container.closest(".thread-card") || container;
+  let existing = targetEl.querySelector(".comments-section");
+  if (existing) {
+    if (existing.cleanup) existing.cleanup();
+    existing.remove();
+    return;
+  }
+
+  const commentsSection = document.createElement("div");
+  commentsSection.classList.add("comments-section");
+
+  const form = document.createElement("form");
+  form.classList.add("comment-form");
+
+  const inputContainer = document.createElement("div");
+  inputContainer.classList.add("comment-input-container");
+
+  const avatar = document.createElement("div");
+  avatar.classList.add("user-avatar", "small");
+  avatar.textContent = getInitials(user.displayName || "Bruker");
+
+  const textarea = document.createElement("textarea");
+  textarea.classList.add("comment-input");
+  textarea.placeholder = "Skriv en kommentar (maks 1000 tegn)...";
+  textarea.maxLength = "1000"; // Browser-level limit
+  textarea.required = true;
+
+  inputContainer.appendChild(avatar);
+  inputContainer.appendChild(textarea);
+
+  // ADD CHARACTER COUNTER
+  const charCounter = document.createElement("div");
+  charCounter.classList.add("char-counter");
+  charCounter.style.cssText = `
+    font-size: 12px;
+    color: #95a5a6;
+    margin-top: 4px;
+    text-align: right;
+    padding: 0 8px;
+  `;
+  charCounter.textContent = "0 / 1000";
+  
+  textarea.addEventListener("input", () => {
+    const count = textarea.value.length;
+    charCounter.textContent = `${count} / 1000`;
+    charCounter.style.color = count > 900 ? "#f59e0b" : count > 950 ? "#e74c3c" : "#95a5a6";
+  });
+
+  inputContainer.appendChild(charCounter);
+
+  const formActions = document.createElement("div");
+  formActions.classList.add("comment-actions");
+
+  const submitBtn = document.createElement("button");
+  submitBtn.classList.add("btn", "btn-primary", "btn-small");
+  submitBtn.type = "submit";
+  submitBtn.textContent = "Kommenter";
+
+  formActions.appendChild(submitBtn);
+  form.appendChild(inputContainer);
+  form.appendChild(formActions);
+
+  const commentsList = document.createElement("div");
+  commentsList.classList.add("comments-list");
+
+  commentsSection.appendChild(form);
+  commentsSection.appendChild(commentsList);
+  targetEl.appendChild(commentsSection);
+
+  const cleanup = visKommentarerLive(threadId, commentsList, user, isNested);
+  commentsSection.cleanup = cleanup;
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const content = textarea.value.trim();
+    if (!content) return;
+    if (content.length > 1000) {
+      showToast({
+        type: "error",
+        title: "For langt",
+        message: "Kommentaren kan ikke overstige 1000 tegn!",
+        duration: 3000
+      });
+      return;
+    }
+    await post(content, null, threadId);
+    textarea.value = "";
+    charCounter.textContent = "0 / 1000";
+  });
 }
 
 // ============================================
