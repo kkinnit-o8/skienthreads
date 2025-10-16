@@ -1504,14 +1504,46 @@ function displayNotifications(notifications) {
 function updateNotificationBadge(notifications) {
   const badge = document.getElementById("notificationBadge");
   const unreadCount = notifications.filter(n => !n.read).length;
+  
   if (unreadCount > 0) {
     badge.textContent = unreadCount > 99 ? "99+" : unreadCount;
     badge.classList.remove("hidden");
+    
+    // Ensure badge styling is applied
+    badge.style.backgroundColor = "#dc3545";
+    badge.style.color = "white";
+    badge.style.borderRadius = "50%";
+    badge.style.padding = "2px 6px";
+    badge.style.fontSize = "0.65rem";
+    badge.style.fontWeight = "bold";
+    badge.style.position = "absolute";
+    badge.style.top = "-8px";
+    badge.style.right = "-8px";
+    badge.style.minWidth = "20px";
+    badge.style.textAlign = "center";
+    badge.style.lineHeight = "1";
+    badge.style.zIndex = "10";
+    badge.style.display = "flex";
+    badge.style.alignItems = "center";
+    badge.style.justifyContent = "center";
   } else {
+    badge.textContent = "";
     badge.classList.add("hidden");
   }
+  
+  // Also sync mobile badge if it exists
+  const mobileBadge = document.querySelector(".mobile-control-row #notificationBadge");
+  if (mobileBadge) {
+    if (unreadCount > 0) {
+      mobileBadge.textContent = unreadCount > 99 ? "99+" : unreadCount;
+      mobileBadge.classList.remove("hidden");
+      mobileBadge.style.display = "flex";
+    } else {
+      mobileBadge.textContent = "";
+      mobileBadge.classList.add("hidden");
+    }
+  }
 }
-
 // ============================================
 // ADMIN PANEL
 // ============================================
@@ -1583,7 +1615,7 @@ function showAdminPanel() {
         }
 
         entry.innerHTML = `
-          <h4>Reported Thread by ${thread.authorName}</h4>
+          <h4>Thread by ${thread.authorName}</h4>
           <p><strong>Content:</strong> ${thread.content}</p>
           <p><strong>School:</strong> ${thread.school}</p>
           <p><strong>Created:</strong> ${timeAgo(thread.createdAt)}</p>
@@ -1874,26 +1906,12 @@ if (!window._presenceListenerAdded) {
   window._presenceListenerAdded = true;
 }
 
-// app.js - Updated sjekk() function
 async function sjekk() {
-  // ALWAYS check ban FIRST, even for existing sessions
+  // Check ban FIRST, before anything else
   if (currentUser?.uid) {
-    try {
-      console.log(`Checking ban for UID: ${currentUser.uid}`);
-      const banned = await isBanned(currentUser.uid);
-      console.log(`Ban status: ${banned}`);
-      if (banned) {
-        document.body.innerHTML = `
-          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; background: #f8f9fa; font-family: Arial, sans-serif;">
-            <h1 style="color: #dc3545; font-size: 3rem; margin: 0;">Du er bannet!</h1>
-            <p style="color: #6c757d; font-size: 1.2rem; margin: 10px 0;">Kontakt <a href="mailto:skienthreads@hotmail.com" style="color: #007bff;">skienthreads@hotmail.com</a> for spørsmål.</p>
-          </div>
-        `;
-        return; // STOP EVERYTHING - no UI, no listeners
-      }
-    } catch (error) {
-      console.error("Ban check failed:", error);
-      // Fallback: Assume not banned if check fails
+    const isBannedUser = await checkAndHandleBan(currentUser);
+    if (isBannedUser) {
+      return; // Stop execution, ban screen is showing
     }
   }
 
@@ -1919,20 +1937,15 @@ async function sjekk() {
       return;
     }
 
-    // RE-CHECK BAN after auth change (redundancy)
+    // Check ban status for logged-in user
     try {
       const banned = await isBanned(user.uid);
       if (banned) {
-        document.body.innerHTML = `
-          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; background: #f8f9fa; font-family: Arial, sans-serif;">
-            <h1 style="color: #dc3545; font-size: 3rem; margin: 0;">Du er bannet!</h1>
-            <p style="color: #6c757d; font-size: 1.2rem; margin: 10px 0;">Kontakt <a href="mailto:skienthreads@hotmail.com" style="color: #007bff;">skienthreads@hotmail.com</a> for spørsmål.</p>
-          </div>
-        `;
+        showBanScreen();
         return;
       }
     } catch (error) {
-      console.error("Ban re-check failed:", error);
+      console.error("Ban check failed:", error);
     }
 
     if (user.emailVerified) {
@@ -1953,7 +1966,7 @@ async function sjekk() {
       if (notificationUnsubscribe) notificationUnsubscribe();
       notificationUnsubscribe = overvåkNotifications(user.uid, (notifications) => {
         displayNotifications(notifications);
-        updateNotificationBadge(notifications);
+        updateNotificationBadge(notifications); // Call the fixed function
       });
     } else {
       showToast({
@@ -2702,4 +2715,89 @@ function updateCompactInfo() {
       });
     });
   }
+}
+
+function showBanScreen() {
+  // Clear the entire body
+  document.body.innerHTML = `
+    <div style="
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, var(--primary-light) 0%, var(--background) 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    ">
+      <div style="
+        background: white;
+        padding: 40px;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        max-width: 500px;
+        width: 100%;
+      ">
+        <div style="
+          font-size: 60px;
+          margin-bottom: 20px;
+        ">🚫</div>
+        
+        <h1 style="
+          color: #dc3545;
+          font-size: 32px;
+          margin: 0 0 16px;
+          font-weight: 700;
+        ">Du er bannet</h1>
+        
+        <p style="
+          color: #666;
+          font-size: 16px;
+          margin: 0 0 24px;
+          line-height: 1.6;
+        ">Din konto har blitt bannet fra SkienThreads. Hvis du mener dette er en feil, kontakt oss.</p>
+        
+        <div style="
+          background: #f8f9fa;
+          padding: 16px;
+          border-radius: 8px;
+          margin-bottom: 24px;
+          border-left: 4px solid #dc3545;
+        ">
+          <p style="
+            color: #333;
+            font-size: 14px;
+            margin: 0;
+            font-weight: 600;
+          ">Kontakt support:</p>
+          <a href="mailto:skienthreads@hotmail.com" style="
+            color: #007bff;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 600;
+            word-break: break-all;
+          ">skienthreads@hotmail.com</a>
+        </div>
+        
+        <button onclick="location.reload();" style="
+          background: #007bff;
+          color: white;
+          border: none;
+          padding: 12px 28px;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        " onmouseover="this.style.background='#0056b3'" onmouseout="this.style.background='#007bff'">
+          Refresh
+        </button>
+      </div>
+    </div>
+  `;
+  
+  // Stop all event listeners and timers
+  document.body.style.overflow = 'hidden';
 }
