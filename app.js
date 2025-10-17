@@ -487,23 +487,27 @@ function updateThreadContent(threadEl, data, activeUser, commentCount) {
     textDiv.classList.add("thread-text");
     const fullText = data.content || "";
     let displayText = fullText;
+    
     if (isTruncated && fullText.length > 200) {
       displayText = fullText.substring(0, 200) + "...";
       textDiv.classList.add("truncated");
+      textDiv.innerHTML = parseHashtags(displayText);
+      
       const seeMore = document.createElement("span");
       seeMore.classList.add("see-more");
       seeMore.textContent = "Se mer...";
       seeMore.addEventListener("click", () => {
-        renderContentAndPoll(contentEl, data, activeUser, false); // Re-render full text and poll
+        renderContentAndPoll(contentEl, data, activeUser, false);
       });
-      textDiv.appendChild(document.createTextNode(displayText));
       textDiv.appendChild(seeMore);
+      attachHashtagListeners(textDiv);
     } else {
-      textDiv.textContent = displayText;
+      textDiv.innerHTML = parseHashtags(displayText);
+      attachHashtagListeners(textDiv);
     }
     contentEl.appendChild(textDiv);
 
-    // Render poll
+    // Render poll (keep existing poll rendering code)
     if (data.poll?.question && Array.isArray(data.poll.options)) {
       const pollDiv = document.createElement("div");
       pollDiv.classList.add("poll-container");
@@ -632,15 +636,14 @@ function getThread(data, activeUser, container, commentCount) {
   username.textContent = data.authorName || "Anonym";
   username.style.cursor = "pointer";
 
-  // In getThread and createCommentCard, change to:
-   username.addEventListener('click', (e) => {
-     e.preventDefault();
-     navigateToProfile(data.authorName);  // Or data.username if separate field
-   });
-   avatar.addEventListener('click', (e) => {
-     e.preventDefault();
-     navigateToProfile(data.authorName);  // Or data.username if separate field
-   });
+  username.addEventListener('click', (e) => {
+    e.preventDefault();
+    navigateToProfile(data.authorName);
+  });
+  avatar.addEventListener('click', (e) => {
+    e.preventDefault();
+    navigateToProfile(data.authorName);
+  });
 
   const meta = document.createElement("div");
   meta.classList.add("thread-meta");
@@ -657,26 +660,36 @@ function getThread(data, activeUser, container, commentCount) {
   header.appendChild(avatar);
   header.appendChild(userInfo);
 
+  // ============================================
+  // UPDATED CONTENT RENDERING WITH HASHTAG PARSING
+  // ============================================
   const contentEl = document.createElement("div");
-contentEl.classList.add("thread-content");
-const maxLength = 200; // Adjust as needed
-if (data.content.length > maxLength) {
-  contentEl.classList.add("truncated");
-  const shortContent = data.content.substring(0, maxLength) + "...";
-  contentEl.textContent = shortContent;
-  const seeMore = document.createElement("span");
-  seeMore.classList.add("see-more");
-  seeMore.textContent = "Se mer...";
-  seeMore.addEventListener("click", () => {
-    contentEl.classList.remove("truncated");
-    contentEl.textContent = data.content;
-    seeMore.remove();
-  });
-  contentEl.appendChild(seeMore);
-} else {
-  contentEl.textContent = data.content || "";
-}
+  contentEl.classList.add("thread-content");
+  const maxLength = 200;
+  const fullContent = data.content || "";
+  
+  if (fullContent.length > maxLength) {
+    contentEl.classList.add("truncated");
+    const shortContent = fullContent.substring(0, maxLength) + "...";
+    contentEl.innerHTML = parseHashtags(shortContent);
+    
+    const seeMore = document.createElement("span");
+    seeMore.classList.add("see-more");
+    seeMore.textContent = "Se mer...";
+    seeMore.addEventListener("click", () => {
+      contentEl.classList.remove("truncated");
+      contentEl.innerHTML = parseHashtags(fullContent);
+      seeMore.remove();
+      attachHashtagListeners(contentEl);
+    });
+    contentEl.appendChild(seeMore);
+    attachHashtagListeners(contentEl);
+  } else {
+    contentEl.innerHTML = parseHashtags(fullContent);
+    attachHashtagListeners(contentEl);
+  }
 
+  // Poll rendering (keep existing poll code)
   if (data.poll?.question && Array.isArray(data.poll.options)) {
     const pollDiv = document.createElement("div");
     pollDiv.classList.add("poll-container");
@@ -742,6 +755,7 @@ if (data.content.length > maxLength) {
     contentEl.appendChild(pollDiv);
   }
 
+  // Continue with rest of getThread function (actions, votes, etc.)
   const actions = document.createElement("div");
   actions.classList.add("thread-actions");
 
@@ -948,6 +962,47 @@ function updateCommentContent(commentEl, comment) {
   }
 }
 
+function parseHashtags(text) {
+  // Safety check
+  if (!text || typeof text !== 'string') return '';
+  
+  // Replace #hashtag with clickable spans
+  return text.replace(/#(\w+)/g, (match, tag) => {
+    return `<span class="hashtag-link" data-tag="${tag.toLowerCase()}" style="color: #6c757d; text-decoration: underline; cursor: pointer;">${match}</span>`;
+  });
+}
+
+function attachHashtagListeners(container) {
+  if (!container) return;
+  
+  container.querySelectorAll('.hashtag-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const tag = link.dataset.tag;
+      currentHashtag = currentHashtag === tag ? null : tag;
+      
+      // Update all hashtag highlights
+      document.querySelectorAll('.trending-topic, .hashtag-link, .compact-hashtag').forEach(el => {
+        const elTag = el.dataset?.tag || el.textContent.replace('#', '').toLowerCase();
+        if (elTag === currentHashtag) {
+          el.style.color = '#007bff';
+          el.style.fontWeight = 'bold';
+        } else if (el.classList.contains('hashtag-link')) {
+          el.style.color = '#6c757d';
+          el.style.fontWeight = 'normal';
+        } else if (el.classList.contains('trending-topic') || el.classList.contains('compact-hashtag')) {
+          el.style.color = '';
+          el.style.fontWeight = '';
+        }
+      });
+      
+      applySorting(schoolFilter, currentUser, document.getElementById('Threads'));
+      updateCompactInfo();
+    });
+  });
+}
+
 function createCommentCard(comment, isNested, user) {
   const card = document.createElement("div");
   card.classList.add("comment-card");
@@ -960,9 +1015,8 @@ function createCommentCard(comment, isNested, user) {
   const avatar = document.createElement("div");
   avatar.classList.add("user-avatar", "small");
   avatar.textContent = getInitials(comment.authorName || "Anonym");
-  avatar.style.cursor = "pointer"; // Make cursor a pointer to indicate it's clickable
+  avatar.style.cursor = "pointer";
   
-  // ADD CLICK HANDLER TO AVATAR
   avatar.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -975,9 +1029,8 @@ function createCommentCard(comment, isNested, user) {
   const username = document.createElement("div");
   username.classList.add("comment-username");
   username.textContent = comment.authorName || "Anonym";
-  username.style.cursor = "pointer"; // Already clickable, but make it obvious
+  username.style.cursor = "pointer";
   
-  // ADD CLICK HANDLER TO USERNAME (if not already there)
   username.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -998,9 +1051,11 @@ function createCommentCard(comment, isNested, user) {
   header.appendChild(avatar);
   header.appendChild(userInfo);
 
+  // UPDATED: Parse hashtags in comment content
   const content = document.createElement("div");
   content.classList.add("comment-content");
-  content.textContent = comment.content;
+  content.innerHTML = parseHashtags(comment.content || "");
+  attachHashtagListeners(content);
 
   const actions = document.createElement("div");
   actions.classList.add("comment-actions");
