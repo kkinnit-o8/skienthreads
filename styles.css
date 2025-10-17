@@ -2486,6 +2486,10 @@ body {
   font-size: 11px;
 }
 
+.compact-school.active{
+  background-color: var(--primary-light);
+}
+
 .compact-school-name {
   font-weight: 600;
   color: var(--text-primary);

@@ -2802,6 +2802,7 @@ function syncMobileNavActions(original, clone) {
               panel.classList.toggle('hidden');
             }
           });
+
           
           // Sync badge with desktop notification button
           const desktopNotifBtn = original.querySelector('#notificationBtn');
@@ -3032,6 +3033,8 @@ function initCompactInfoRow() {
   
   const feedSection = document.querySelector('.feed-section');
   feedSection.insertBefore(compactRow, feedSection.firstChild);
+
+  
 }
 
 function updateCompactInfo() {
@@ -3040,7 +3043,7 @@ function updateCompactInfo() {
   if (compactHashtags) {
     overvåkTrendingHashtags((trending) => {
       compactHashtags.innerHTML = '';
-      trending.slice(0, 3).forEach(([tag, count]) => {
+      trending.slice(0, 4).forEach(([tag, count]) => {
         const hashtagEl = document.createElement('div');
         hashtagEl.className = 'compact-hashtag';
         hashtagEl.textContent = `#${tag}`;
@@ -3075,14 +3078,19 @@ function updateCompactInfo() {
         const count = onlineBySchool[school] || 0;
         const schoolEl = document.createElement('div');
         schoolEl.className = 'compact-school';
+        if (schoolFilter === school) {
+          schoolEl.classList.add('active');
+        }
         schoolEl.innerHTML = `
           <span class="compact-school-name">${school.replace(' VGS', '')}</span>
           <span class="compact-school-count">${count}</span>
         `;
+
         compactSchools.appendChild(schoolEl);
       });
     });
   }
+  
 }
 
 function showBanScreen() {
