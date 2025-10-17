@@ -611,6 +611,169 @@ function updateThreadContent(threadEl, data, activeUser, commentCount) {
 }
 
 // ============================================
+// UPDATED createCommentCard FUNCTION
+// ============================================
+
+function createCommentCard(comment, isNested, user) {
+  const card = document.createElement("div");
+  card.classList.add("comment-card");
+  card.dataset.id = comment.id;
+  if (isNested) card.classList.add("nested-comment");
+
+  const header = document.createElement("div");
+  header.classList.add("comment-header");
+
+  const avatar = document.createElement("div");
+  avatar.classList.add("user-avatar", "small");
+  avatar.textContent = getInitials(comment.authorName || "Anonym");
+  avatar.style.cursor = "pointer";
+  
+  avatar.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigateToProfile(comment.authorName);
+  });
+
+  const userInfo = document.createElement("div");
+  userInfo.classList.add("comment-user-info");
+
+  const username = document.createElement("div");
+  username.classList.add("comment-username");
+  username.textContent = comment.authorName || "Anonym";
+  username.style.cursor = "pointer";
+  
+  username.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigateToProfile(comment.authorName);
+  });
+
+  const meta = document.createElement("div");
+  meta.classList.add("comment-meta");
+  meta.textContent = `${timeAgo(comment.createdAt)} `;
+
+  const badge = document.createElement("span");
+  badge.classList.add("comment-school-badge");
+  badge.textContent = comment.school || "";
+  meta.appendChild(badge);
+
+  userInfo.appendChild(username);
+  userInfo.appendChild(meta);
+  header.appendChild(avatar);
+  header.appendChild(userInfo);
+
+  // UPDATED: Parse hashtags in comment content
+  const content = document.createElement("div");
+  content.classList.add("comment-content");
+  content.innerHTML = parseHashtags(comment.content || "");
+  attachHashtagListeners(content);
+
+  const actions = document.createElement("div");
+  actions.classList.add("comment-actions");
+
+  const vote = document.createElement("div");
+  vote.classList.add("vote", "small");
+
+  const upvote = document.createElement("img");
+  upvote.src = "imgs/upvote.png";
+  upvote.alt = "Upvote";
+  upvote.style.cursor = "pointer";
+  upvote.style.width = "18px";
+  upvote.style.height = "18px";
+
+  const upvotes = comment.upvotes?.length || 0;
+  const downvotes = comment.downvotes?.length || 0;
+  const score = upvotes - downvotes;
+  const userUpvoted = currentUser && comment.upvotes?.includes(currentUser.uid);
+  const userDownvoted = currentUser && comment.downvotes?.includes(currentUser.uid);
+
+  upvote.style.opacity = userUpvoted ? "1" : "0.5";
+
+  const scoreDisplay = document.createElement("span");
+  scoreDisplay.classList.add("vote-score");
+  scoreDisplay.textContent = score > 0 ? `+${score}` : score.toString();
+  scoreDisplay.style.fontSize = "0.85rem";
+  scoreDisplay.style.margin = "0 6px";
+  scoreDisplay.style.color = score > 0 ? "#2ecc71" : score < 0 ? "#e74c3c" : "#95a5a6";
+
+  const downvote = document.createElement("img");
+  downvote.src = "imgs/downvote.png";
+  downvote.alt = "Downvote";
+  downvote.style.cursor = "pointer";
+  downvote.style.width = "18px";
+  downvote.style.height = "18px";
+  downvote.style.opacity = userDownvoted ? "1" : "0.5";
+
+  vote.appendChild(upvote);
+  vote.appendChild(scoreDisplay);
+  vote.appendChild(downvote);
+
+  upvote.addEventListener("click", () => upvoteThread(comment.id));
+  downvote.addEventListener("click", () => downvoteThread(comment.id));
+
+  const replyBtn = document.createElement("button");
+  replyBtn.classList.add("action-btn", "small");
+  replyBtn.textContent = "💬 Svar";
+  replyBtn.addEventListener("click", () => {
+    if (!currentUser) {
+      showToast({
+        type: "error",
+        title: "Logg inn påkrevd",
+        message: "Du må være logget inn for å svare!",
+        duration: 3000
+      });
+      return;
+    }
+    toggleCommentSection(comment.id, currentUser, card, true);
+  });
+
+  actions.appendChild(vote);
+  actions.appendChild(replyBtn);
+
+  if (admin || (user && comment.authorId === user.uid)) {
+    const deleteBtn = document.createElement("button");
+    deleteBtn.classList.add("action-btn", "delete", "small");
+    deleteBtn.textContent = "🗑️";
+    deleteBtn.addEventListener("click", async () => {
+      if (confirm("Er du sikker på at du vil slette denne kommentaren?")) {
+        try {
+          await slettDokument("Threads", comment.id);
+          showToast({
+            type: "success",
+            title: "Suksess",
+            message: "Kommentaren ble slettet!",
+            duration: 3000
+          });
+          card.remove();
+        } catch (error) {
+          console.error("Comment deletion failed:", error);
+          showToast({
+            type: "error",
+            title: "Feil",
+            message: `Kunne ikke slette: ${error.message}`,
+            duration: 5000
+          });
+        }
+      }
+    });
+    actions.appendChild(deleteBtn);
+  }
+
+  card.appendChild(header);
+  card.appendChild(content);
+  card.appendChild(actions);
+
+  if (!isNested) {
+    const nestedCommentsList = document.createElement("div");
+    nestedCommentsList.classList.add("nested-comments-list");
+    card.appendChild(nestedCommentsList);
+    visKommentarerLive(comment.id, nestedCommentsList, user, true);
+  }
+
+  return card;
+}
+
+// ============================================
 // CREATE THREAD ELEMENT
 // ============================================
 
@@ -966,15 +1129,23 @@ function parseHashtags(text) {
   // Safety check
   if (!text || typeof text !== 'string') return '';
   
-  // Replace #hashtag with clickable spans
-  return text.replace(/#(\w+)/g, (match, tag) => {
+  // First replace @mentions with clickable spans (blue)
+  text = text.replace(/@(\w+)/g, (match, username) => {
+    return `<span class="mention-link" data-username="${username.toLowerCase()}">${match}</span>`;
+  });
+  
+  // Then replace #hashtags with clickable spans (gray)
+  text = text.replace(/#(\w+)/g, (match, tag) => {
     return `<span class="hashtag-link" data-tag="${tag.toLowerCase()}" style="color: #6c757d; text-decoration: underline; cursor: pointer;">${match}</span>`;
   });
+  
+  return text;
 }
 
 function attachHashtagListeners(container) {
   if (!container) return;
   
+  // Attach listeners to hashtag links
   container.querySelectorAll('.hashtag-link').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
@@ -998,169 +1169,25 @@ function attachHashtagListeners(container) {
       });
       
       applySorting(schoolFilter, currentUser, document.getElementById('Threads'));
-      updateCompactInfo();
-    });
-  });
-}
-
-function createCommentCard(comment, isNested, user) {
-  const card = document.createElement("div");
-  card.classList.add("comment-card");
-  card.dataset.id = comment.id;
-  if (isNested) card.classList.add("nested-comment");
-
-  const header = document.createElement("div");
-  header.classList.add("comment-header");
-
-  const avatar = document.createElement("div");
-  avatar.classList.add("user-avatar", "small");
-  avatar.textContent = getInitials(comment.authorName || "Anonym");
-  avatar.style.cursor = "pointer";
-  
-  avatar.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    navigateToProfile(comment.authorName);
-  });
-
-  const userInfo = document.createElement("div");
-  userInfo.classList.add("comment-user-info");
-
-  const username = document.createElement("div");
-  username.classList.add("comment-username");
-  username.textContent = comment.authorName || "Anonym";
-  username.style.cursor = "pointer";
-  
-  username.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    navigateToProfile(comment.authorName);
-  });
-
-  const meta = document.createElement("div");
-  meta.classList.add("comment-meta");
-  meta.textContent = `${timeAgo(comment.createdAt)} `;
-
-  const badge = document.createElement("span");
-  badge.classList.add("comment-school-badge");
-  badge.textContent = comment.school || "";
-  meta.appendChild(badge);
-
-  userInfo.appendChild(username);
-  userInfo.appendChild(meta);
-  header.appendChild(avatar);
-  header.appendChild(userInfo);
-
-  // UPDATED: Parse hashtags in comment content
-  const content = document.createElement("div");
-  content.classList.add("comment-content");
-  content.innerHTML = parseHashtags(comment.content || "");
-  attachHashtagListeners(content);
-
-  const actions = document.createElement("div");
-  actions.classList.add("comment-actions");
-
-  const vote = document.createElement("div");
-  vote.classList.add("vote", "small");
-
-  const upvote = document.createElement("img");
-  upvote.src = "imgs/upvote.png";
-  upvote.alt = "Upvote";
-  upvote.style.cursor = "pointer";
-  upvote.style.width = "18px";
-  upvote.style.height = "18px";
-
-  const upvotes = comment.upvotes?.length || 0;
-  const downvotes = comment.downvotes?.length || 0;
-  const score = upvotes - downvotes;
-  const userUpvoted = currentUser && comment.upvotes?.includes(currentUser.uid);
-  const userDownvoted = currentUser && comment.downvotes?.includes(currentUser.uid);
-
-  upvote.style.opacity = userUpvoted ? "1" : "0.5";
-
-  const scoreDisplay = document.createElement("span");
-  scoreDisplay.classList.add("vote-score");
-  scoreDisplay.textContent = score > 0 ? `+${score}` : score.toString();
-  scoreDisplay.style.fontSize = "0.85rem";
-  scoreDisplay.style.margin = "0 6px";
-  scoreDisplay.style.color = score > 0 ? "#2ecc71" : score < 0 ? "#e74c3c" : "#95a5a6";
-
-  const downvote = document.createElement("img");
-  downvote.src = "imgs/downvote.png";
-  downvote.alt = "Downvote";
-  downvote.style.cursor = "pointer";
-  downvote.style.width = "18px";
-  downvote.style.height = "18px";
-  downvote.style.opacity = userDownvoted ? "1" : "0.5";
-
-  vote.appendChild(upvote);
-  vote.appendChild(scoreDisplay);
-  vote.appendChild(downvote);
-
-  upvote.addEventListener("click", () => upvoteThread(comment.id));
-  downvote.addEventListener("click", () => downvoteThread(comment.id));
-
-  const replyBtn = document.createElement("button");
-  replyBtn.classList.add("action-btn", "small");
-  replyBtn.textContent = "💬 Svar";
-  replyBtn.addEventListener("click", () => {
-    if (!currentUser) {
-      showToast({
-        type: "error",
-        title: "Logg inn påkrevd",
-        message: "Du må være logget inn for å svare!",
-        duration: 3000
-      });
-      return;
-    }
-    toggleCommentSection(comment.id, currentUser, card, true);
-  });
-
-  actions.appendChild(vote);
-  actions.appendChild(replyBtn);
-
-  if (admin || (user && comment.authorId === user.uid)) {
-    const deleteBtn = document.createElement("button");
-    deleteBtn.classList.add("action-btn", "delete", "small");
-    deleteBtn.textContent = "🗑️";
-    deleteBtn.addEventListener("click", async () => {
-      if (confirm("Er du sikker på at du vil slette denne kommentaren?")) {
-        try {
-          await slettDokument("Threads", comment.id);
-          showToast({
-            type: "success",
-            title: "Suksess",
-            message: "Kommentaren ble slettet!",
-            duration: 3000
-          });
-          card.remove();
-        } catch (error) {
-          console.error("Comment deletion failed:", error);
-          showToast({
-            type: "error",
-            title: "Feil",
-            message: `Kunne ikke slette: ${error.message}`,
-            duration: 5000
-          });
-        }
+      if (typeof updateCompactInfo === 'function') {
+        updateCompactInfo();
       }
     });
-    actions.appendChild(deleteBtn);
-  }
-
-  card.appendChild(header);
-  card.appendChild(content);
-  card.appendChild(actions);
-
-  if (!isNested) {
-    const nestedCommentsList = document.createElement("div");
-    nestedCommentsList.classList.add("nested-comments-list");
-    card.appendChild(nestedCommentsList);
-    visKommentarerLive(comment.id, nestedCommentsList, user, true);
-  }
-
-  return card;
+  });
+  
+  // Attach listeners to mention links
+  container.querySelectorAll('.mention-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const username = link.dataset.username;
+      if (typeof navigateToProfile === 'function') {
+        navigateToProfile(username);
+      }
+    });
+  });
 }
+
 
 // ============================================
 // OPTIONAL: ADD CHARACTER COUNTER IN COMMENT INPUT
@@ -2248,12 +2275,6 @@ async function sjekk() {
 
       if (notificationUnsubscribe) notificationUnsubscribe();
       notificationUnsubscribe = overvåkNotifications(user.uid, (notifications) => {
-  console.log("Total notifications:", notifications.length);
-  console.log("Unread:", notifications.filter(n => !n.read).length);
-  
-  // Direct test
-  const badge = document.getElementById("notificationBadge");
-  console.log("Badge element found:", badge ? "YES" : "NO");
   
   displayNotifications(notifications);
   updateNotificationBadge(notifications);

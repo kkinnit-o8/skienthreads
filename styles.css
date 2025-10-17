@@ -2770,3 +2770,6 @@ body {
   opacity: 1 !important;
 }
 
+.mention-link{
+  color: #007bff; text-decoration: underline; cursor: pointer;
+}
