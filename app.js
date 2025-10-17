@@ -2217,15 +2217,11 @@ if (!window._presenceListenerAdded) {
 }
 
 async function sjekk() {
-  // Check ban FIRST, before anything else
   if (currentUser?.uid) {
     const isBannedUser = await checkAndHandleBan(currentUser);
-    if (isBannedUser) {
-      return; // Stop execution, ban screen is showing
-    }
+    if (isBannedUser) return;
   }
 
-  // Proceed with normal auth monitoring
   overvåkBruker(async (user) => {
     currentUser = user;
     updateNavForAuth(user);
@@ -2247,7 +2243,6 @@ async function sjekk() {
       return;
     }
 
-    // Check ban status for logged-in user
     try {
       const banned = await isBanned(user.uid);
       if (banned) {
@@ -2275,10 +2270,12 @@ async function sjekk() {
 
       if (notificationUnsubscribe) notificationUnsubscribe();
       notificationUnsubscribe = overvåkNotifications(user.uid, (notifications) => {
-  
-  displayNotifications(notifications);
-  updateNotificationBadge(notifications);
-});
+        displayNotifications(notifications);
+        updateNotificationBadge(notifications);
+      });
+
+      // CALL THIS AFTER threads are loaded
+      setTimeout(() => handleInitialRoute(), 100);
     } else {
       showToast({
         type: "warning",
@@ -2361,7 +2358,7 @@ function setupMentionSupport() {
 // ============================================
 
 window.addEventListener("DOMContentLoaded", () => {
-    initRouter();
+  initRouter();
   sjekk();
   showMainPage();
   setupMentionSupport();
@@ -2471,51 +2468,98 @@ updateOnlineUsers = function() {
   }
 });
 
-// app.js - Add these globals and functions
+// Replace your existing router functions with these updated versions:
 
-let currentRoute = window.location.pathname;  // Track current path
+let currentRoute = window.location.pathname;
 
-// Simple router function
 function initRouter() {
-  function handleRoute() {
-    const path = window.location.pathname;
-    if (path.startsWith('/@')) {  // e.g., /@username
-      const username = path.substring(2);  // Remove '/@'
-      if (username) {
-        showProfilePage(username);
-      } else {
-        showFeed();  // Fallback to feed
-      }
-    } else {
-      showFeed();  // Default to main feed
-    }
+  // GitHub Pages fix: convert query params back to path
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('p')) {
+    const path = '/' + params.get('p');
+    history.replaceState(null, '', path);
   }
-
-  // Listen for URL changes
-  window.addEventListener('popstate', handleRoute);
-  handleRoute();  // Initial load
+  
+  // Handle initial route on page load
+  handleRouteChange();
+  
+  // Listen for browser back/forward
+  window.addEventListener('popstate', handleRouteChange);
+  
+  // Intercept all link clicks to handle routing
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('a[href^="/@"]');
+    if (link) {
+      e.preventDefault();
+      const href = link.getAttribute('href');
+      history.pushState({ route: 'profile' }, '', href);
+      handleRouteChange();
+    }
+  });
 }
 
-// Navigate to profile URL without reload
+function handleRouteChange() {
+  const path = window.location.pathname;
+  
+  // Handle profile routes
+  if (path.startsWith('/@')) {
+    const username = path.substring(2);
+    if (username) {
+      showProfilePage(username);
+      return;
+    }
+  }
+  
+  // Default to feed
+  showFeed();
+}
+
+async function handleInitialRoute() {
+  const path = window.location.pathname;
+  
+  // Wait for threads to load before routing
+  if (!currentThreadsData || currentThreadsData.length === 0) {
+    // Give it a moment to load
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  
+  if (path.startsWith('/@')) {
+    const username = path.substring(2);
+    if (username) {
+      await showProfilePage(username);
+      return;
+    }
+  }
+  
+  showFeed();
+}
+
 function navigateToProfile(username) {
   const url = `/@${username}`;
   history.pushState({ route: 'profile' }, '', url);
   showProfilePage(username);
 }
 
-// Show full profile page
 async function showProfilePage(displayName) {
   try {
-    console.log(`Rendering profile page for displayName: ${displayName}`);
-    const userData = await getUserByUsername(displayName);
-    currentRoute = `/@${displayName.toLowerCase().replace(/\s+/g, '')}`;
-
-    // Hide main content, show profile
-    document.getElementById('main-content').classList.add('hidden');
+    console.log(`Loading profile for: ${displayName}`);
+    
+    // Show loading state
     const profileContainer = document.getElementById('profilePage') || createProfilePage();
     profileContainer.classList.remove('hidden');
+    document.getElementById('main-content').classList.add('hidden');
+    profileContainer.querySelector('.profile-threads').innerHTML = '<p>Laster profil...</p>';
+    
+    // Fetch user data
+    const userData = await getUserByUsername(displayName);
+    
+    if (!userData) {
+      throw new Error('User not found');
+    }
+    
+    currentRoute = `/@${displayName.toLowerCase().replace(/\s+/g, '')}`;
 
-    // Render profile header with avatar beside username
+    // Render profile header
     const headerEl = profileContainer.querySelector('.profile-header');
     headerEl.innerHTML = `
       <div class="profile-header-inner">
@@ -2530,9 +2574,10 @@ async function showProfilePage(displayName) {
       <button id="backToFeed" class="btn btn-primary">← Back to Feed</button>
     `;
 
-    // Render threads list using getThread
+    // Render threads
     const threadsContainer = profileContainer.querySelector('.profile-threads');
     threadsContainer.innerHTML = userData.totalThreads === 0 ? "<p>Ingen tråder ennå</p>" : '';
+    
     userData.threads
       .sort((a, b) => {
         const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt).getTime();
@@ -2545,30 +2590,41 @@ async function showProfilePage(displayName) {
         threadsContainer.appendChild(threadEl);
       });
 
-    // Back button
-    document.getElementById('backToFeed').addEventListener('click', showFeed);
-    // Scroll to the username (profile-header-inner)
-    const scrollto = document.documentElement.scrollTop > 0 ? document.documentElement : document.body;
-    scrollto.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    showToast({ type: 'success', title: 'Profile Loaded', message: `Viewing @${userData.username}'s profile`, duration: 2000 });
+    // Add back button handler
+    const backBtn = document.getElementById('backToFeed');
+    if (backBtn) {
+      backBtn.addEventListener('click', showFeed);
+    }
+    
     document.title = `@${userData.username} - SkienThreads`;
+    
+    showToast({ 
+      type: 'success', 
+      title: 'Profile Loaded', 
+      message: `Viewing @${userData.username}'s profile`, 
+      duration: 2000 
+    });
   } catch (error) {
     console.error(`Failed to load profile for ${displayName}:`, error);
-    showToast({ type: 'error', title: 'Not Found', message: `User @${displayName} not found`, duration: 3000 });
+    showToast({ 
+      type: 'error', 
+      title: 'Not Found', 
+      message: `User @${displayName} not found`, 
+      duration: 3000 
+    });
     showFeed();
   }
 }
 
-// Hide profile, show feed
 function showFeed() {
   currentRoute = '/';
   history.pushState({ route: 'feed' }, '', '/');
   document.getElementById('profilePage')?.classList.add('hidden');
   document.getElementById('main-content').classList.remove('hidden');
-  applySorting(schoolFilter, currentUser, document.getElementById('Threads'));  // Refresh feed
+  document.title = 'SkienThreads - Feed';
+  applySorting(schoolFilter, currentUser, document.getElementById('Threads'));
 }
 
-// Create profile page DOM (call once)
 function createProfilePage() {
   const profileDiv = document.createElement('div');
   profileDiv.id = 'profilePage';
@@ -2580,6 +2636,7 @@ function createProfilePage() {
   document.body.insertBefore(profileDiv, document.getElementById('main-content'));
   return profileDiv;
 }
+
 const logo = document.getElementById("logo");
 logo.style.cursor = "pointer";
 logo.addEventListener("click", () => {

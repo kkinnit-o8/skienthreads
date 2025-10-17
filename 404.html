@@ -31,12 +31,14 @@
   <meta name="twitter:title" content="SkienThreads — Anonyme tråder fra Skien VGS, Hjalmar og Skogmo">
   <meta name="twitter:description" content="Et anonymt forum for elever i Skien. Del tanker og meninger fra Skien vgs, Hjalmar Johansen og Skogmo uten filter.">
   <meta name="twitter:image" content="https://skienthreads.web.app/preview.jpg">
+
     <script>
-    // Store the path for 404.html to restore
+    // GitHub Pages SPA redirect
     (function(){
-      var path = window.location.pathname;
-      if (path && path !== '/') {
-        sessionStorage.redirect = location.href;
+      var redirect = sessionStorage.redirect;
+      delete sessionStorage.redirect;
+      if (redirect && redirect != location.href) {
+        history.replaceState(null, null, redirect);
       }
     })();
   </script>
