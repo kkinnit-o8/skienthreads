@@ -62,7 +62,7 @@ body {
   padding: 40px;
   border-radius: 16px;
   box-shadow: var(--shadow-lg);
-  width: 100%;
+  width: 100%;;
   max-width: 420px;
   animation: fadeIn 0.5s ease-in;
   position: absolute;
@@ -985,11 +985,6 @@ body {
   /* Auth forms: Reduce gaps */
   .auth-screen form {
     gap: 16px;
-  }
-
-  .auth-screen {
-    padding: 20px;
-    margin: 20px;
   }
 
   /* Comments: Ensure stacking */
