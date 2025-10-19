@@ -3177,3 +3177,8 @@ function showBanScreen() {
   // Stop all event listeners and timers
   document.body.style.overflow = 'hidden';
 }
+
+document.getElementById("show-terms").addEventListener("click", (e) => {
+  const text = document.getElementById("termsText");
+  text.classList.toggle("hidden");
+});
