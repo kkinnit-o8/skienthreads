@@ -2772,3 +2772,9 @@ body {
     left: 50%;
     transform: translate(-50%, -50%);
   }}
+
+.gray-little {
+  color: gray;
+  font-size: 0.75rem;
+  margin-top: 4px;
+}

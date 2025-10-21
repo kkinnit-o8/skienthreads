@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Skien Threads</title>
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="stylesheet" href="styles.css?v=14">
   <link rel="apple-touch-icon" sizes="180x180" href="favicon_io/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon_io/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon_io/favicon-16x16.png">
@@ -53,7 +53,9 @@
       <label for="regEmail">Skolemail: </label>
       <input type="email" id="regEmail" name="mail" autocomplete="email" required>
       
-      <label for="regName">Brukernavn:</label>
+      <label for="regName">Brukernavn:
+        <p class="gray-little">dette er anonymt "ikke bruk noe personelig"</p>
+      </label>
       <input type="text" id="regName" name="username" autocomplete="name" required>
 
       <label for="regSchool">Velg skole:</label>
@@ -275,6 +277,6 @@
 </footer>
 
   <script type="module" src="utils.js?v=12"></script>
-  <script type="module" src="app.js?v=20"></script>
+  <script type="module" src="app.js?v=21"></script>
 </body>
 </html>
