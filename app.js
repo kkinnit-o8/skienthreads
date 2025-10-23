@@ -86,7 +86,13 @@ async function post(content, formElement, parentId = null) {
   }
 
   const school = await hentSkole(currentUser.uid);
-  const hashtags = [...content.matchAll(/#(\w+)/g)].map(match => match[1].toLowerCase());
+  const hashtags = [
+  ...new Set(
+    [...content.matchAll(/#(\w+)/g)].map(match => match[1].toLowerCase())
+  )
+];
+
+
 
   let pollData = null;
   const pollToggle = document.getElementById("poll-toggle");
